@@ -10,7 +10,7 @@ import (
 func TestMongoClient(t *testing.T) {
 
 	conf := config.AccessPoint{
-		Source: "mongodb://mguser:mgpassword@9.135.250.244:27017,9.135.250.136:27017,9.135.251.28:27017/nimble_product?authSource=admin",
+		Source: "mongodb://mguser:mgpassword@127.0.0.1:27017,127.0.0.2:27017,127.0.0.3:27017/my_product?authSource=admin",
 	}
 	client, err := NewMongoClient(conf)
 	if err != nil {
