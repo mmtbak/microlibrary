@@ -1,0 +1,155 @@
+package gorm
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"time"
+
+	"github.com/mmtbak/microlibrary/library/config"
+
+	_ "github.com/go-sql-driver/mysql" // mysql driver
+	"gorm.io/driver/clickhouse"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+// DBClient Gorm的数据库连接
+type DBClient struct {
+	conn    *gorm.DB
+	conf    config.AccessPoint
+	options DBClientOptions
+}
+
+// DBClientOptions dbclient 配置选项
+type DBClientOptions struct {
+	MaxOpenConn int
+	MaxIdleConn int
+	MaxIdleTime string
+	SQLLevel    string
+}
+
+// LogLevelMap log level for config string
+var LogLevelMap = map[string]logger.LogLevel{
+	"info":   logger.Info,
+	"error":  logger.Error,
+	"silent": logger.Silent,
+}
+
+// NewDBClient Create DBEngine instance
+func NewDBClient(conf config.AccessPoint) (*DBClient, error) {
+
+	var conn *gorm.DB
+	var err error
+
+	op := DBClientOptions{
+		MaxOpenConn: 100,
+		MaxIdleConn: 100,
+	}
+
+	dsn, err := conf.Decode(&op)
+	if err != nil {
+		return nil, err
+	}
+
+	switch dsn.Scheme {
+	case "mysql":
+		conn, err = gorm.Open(mysql.Open(dsn.Source), &gorm.Config{})
+	case "clickhouse":
+		conn, err = gorm.Open(clickhouse.Open(conf.Source), &gorm.Config{})
+	default:
+		return nil, fmt.Errorf("no database type : [%s]", dsn.Scheme)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	client := &DBClient{
+		conn:    conn,
+		conf:    conf,
+		options: op,
+	}
+	err = client.ConfigOptions(op)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+// Session Session
+func (model *DBClient) Session() *gorm.DB {
+	return model.conn.Session(&gorm.Session{})
+}
+
+// NewSession Session
+func (model *DBClient) NewSession() *gorm.DB {
+	return model.conn.Begin()
+}
+
+// DB DB
+func (model *DBClient) DB() *gorm.DB {
+	return model.conn
+}
+
+// SyncDB sync table defined in  struct.go
+func (model *DBClient) SyncDB(tables []interface{}) error {
+	err := model.conn.AutoMigrate(tables...)
+	return err
+}
+
+// StartMonitor Monitor DBState
+func (model *DBClient) StartMonitor() {
+	db, err := model.conn.DB()
+	if err != nil {
+		model.conn.Logger.Error(context.Background(), "failed model.conn.DB()")
+		return
+	}
+
+	for {
+		time.Sleep(1 * time.Minute)
+		stat := db.Stats()
+		msg := fmt.Sprintf("maxopen : %d , opened:  %d , idle : %d ,  inuse: %d , wait : %d,  waitduration : %s",
+			stat.MaxOpenConnections, stat.OpenConnections, stat.Idle, stat.InUse, stat.WaitCount,
+			stat.WaitDuration.String(),
+		)
+		model.conn.Logger.Info(context.Background(), msg)
+	}
+}
+
+// SetLogger set logger
+func (c *DBClient) SetLogger(writer io.Writer, config *logger.Config) {
+	if config == nil {
+		config = &logger.Config{
+			SlowThreshold:             3 * time.Second, // 慢 SQL 阈值
+			LogLevel:                  logger.Error,    // 日志级别
+			IgnoreRecordNotFoundError: true,            // 忽略ErrRecordNotFound（记录未找到）错误
+			Colorful:                  false,           // 禁用彩色打印
+		}
+		l, ok := LogLevelMap[c.options.SQLLevel]
+		if ok {
+			config.LogLevel = l
+		}
+
+	}
+	newLogger := logger.New(
+		log.New(writer, "gorm", log.LstdFlags), // io writer（日志输出的目标，前缀和日志包含的内容——译者注）
+		*config,
+	)
+	c.conn.Config.Logger = newLogger
+}
+
+// ConfigOptions Config client options
+// support key in dbclientoptions
+func (c *DBClient) ConfigOptions(options DBClientOptions) error {
+	db, err := c.conn.DB()
+	if err != nil {
+		return err
+	}
+	db.SetMaxOpenConns(options.MaxOpenConn)
+	db.SetMaxIdleConns(options.MaxIdleConn)
+	c.SetLogger(os.Stdout, nil)
+	return nil
+}
