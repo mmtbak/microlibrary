@@ -13,7 +13,7 @@ func TestAccessPoint(t *testing.T) {
 	}{
 		{
 			data: AccessPoint{
-				Source: "mysql://root:hfx951122@tcp(9.134.177.103:3306)/footstone_test?charset=utf8&parseTime=true&loc=Local",
+				Source: "mysql://root:password@tcp(128.0.0.1:3306)/footstone_test?charset=utf8&parseTime=true&loc=Local",
 				Options: map[string]interface{}{
 					"maxopenconn": 1000,
 					"maxidleconn": 1000,
