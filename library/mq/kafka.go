@@ -10,7 +10,7 @@ import (
 	"github.com/mmtbak/microlibrary/library/config"
 	"github.com/panjf2000/ants/v2"
 	"github.com/pkg/errors"
-	"trpc.tech/trpc-go/trpc-go/v2/log"
+	"golang.org/x/exp/slog"
 )
 
 var (
@@ -173,7 +173,7 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 	// consumerconfig.Version = sarama.V0_11_0_2
 	consumer, err = sarama.NewConsumerGroup(mq.hosts, op.ConsumerGroup, consumerconfig)
 	if err != nil {
-		log.Errorf("err:%s", err)
+		slog.Error("err:%s", err)
 		return nil, errors.Wrap(err, "new consumer group failed")
 	}
 	return consumer, nil
@@ -236,7 +236,7 @@ func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...Consu
 				if errors.Is(err, sarama.ErrOutOfBrokers) {
 					err = errors.Wrap(sarama.ErrOutOfBrokers, "conn disconnect")
 				}
-				log.Errorf("kafka error", err)
+				slog.Error("kafka error", err)
 			}
 			// check if context was cancelled, signaling that the consumer should stop
 			if opt.Ctx.Err() != nil {
