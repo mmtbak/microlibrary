@@ -1,4 +1,4 @@
-package gorm
+package rdb
 
 import (
 	"gorm.io/gorm"
