@@ -19,9 +19,11 @@ import (
 
 // DBClient Gorm的数据库连接
 type DBClient struct {
-	conn    *gorm.DB
-	conf    config.AccessPoint
-	options DBClientOptions
+	schmea   string
+	database string
+	conn     *gorm.DB
+	conf     config.AccessPoint
+	options  DBClientOptions
 }
 
 // DBClientOptions dbclient 配置选项
@@ -66,11 +68,14 @@ func NewDBClient(conf config.AccessPoint) (*DBClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbname := dsn.Path
 
 	client := &DBClient{
-		conn:    conn,
-		conf:    conf,
-		options: op,
+		schmea:   dsn.Scheme,
+		database: dbname,
+		conn:     conn,
+		conf:     conf,
+		options:  op,
 	}
 	err = client.ConfigOptions(op)
 	if err != nil {
@@ -80,24 +85,45 @@ func NewDBClient(conf config.AccessPoint) (*DBClient, error) {
 }
 
 // Session Session
-func (model *DBClient) Session() *gorm.DB {
-	return model.conn.Session(&gorm.Session{})
+func (client *DBClient) Session() *gorm.DB {
+	return client.conn.Session(&gorm.Session{})
 }
 
 // NewSession Session
-func (model *DBClient) NewSession() *gorm.DB {
-	return model.conn.Begin()
+func (client *DBClient) NewSession() *gorm.DB {
+	return client.conn.Begin()
 }
 
 // DB DB
-func (model *DBClient) DB() *gorm.DB {
-	return model.conn
+func (client *DBClient) DB() *gorm.DB {
+	return client.conn
 }
 
-// SyncDB sync table defined in  struct.go
-func (model *DBClient) SyncDB(tables []interface{}) error {
-	err := model.conn.AutoMigrate(tables...)
-	return err
+// SyncTables sync tables defined in  table object
+func (client *DBClient) SyncTables(tables []interface{}) error {
+
+	var err error
+	for _, table := range tables {
+		var opt TableOption
+		tx := client.NewSession()
+
+		// 如果是clickhouse 表
+		if optable, ok := table.(TableWithOption); ok {
+			opt = optable.TableOptions(client.database)
+			if opt.TableOptions != "" {
+				tx = tx.Set("gorm:table_options", opt.TableOptions)
+			}
+			if opt.ClusterOptions != "" {
+				tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
+			}
+
+		}
+		err = tx.AutoMigrate(table)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // StartMonitor Monitor DBState
