@@ -112,6 +112,9 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 			opt = optable.TableOptions(client.database)
 			if opt.TableOptions != "" {
 				tx = tx.Set("gorm:table_options", opt.TableOptions)
+			} else {
+				defaultoption := "CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+				tx = tx.Set("gorm:table_options", defaultoption)
 			}
 			if opt.ClusterOptions != "" {
 				tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
