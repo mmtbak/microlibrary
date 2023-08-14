@@ -42,3 +42,7 @@ func (repo *DBRepository) IsRecordNotFound(err error) bool {
 func (repo *DBRepository) GetClient() *DBClient {
 	return repo.Client
 }
+
+func (repo *DBRepository) NewSession() Session {
+	return repo.Client.NewSession()
+}
