@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/mmtbak/microlibrary/library/config"
@@ -16,6 +17,14 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
+
+var schemas = struct {
+	MySQL      string
+	Clickhouse string
+}{
+	MySQL:      "mysql",
+	Clickhouse: "clickhouse",
+}
 
 // DBClient Gorm的数据库连接
 type DBClient struct {
@@ -56,11 +65,12 @@ func NewDBClient(conf config.AccessPoint, opts ...gorm.Option) (*DBClient, error
 	if err != nil {
 		return nil, err
 	}
+	dsn.Scheme = strings.ToLower(dsn.Scheme)
 
 	switch dsn.Scheme {
-	case "mysql":
+	case schemas.MySQL:
 		conn, err = gorm.Open(mysql.Open(dsn.Source), opts...)
-	case "clickhouse":
+	case schemas.Clickhouse:
 		conn, err = gorm.Open(clickhouse.Open(conf.Source), opts...)
 	default:
 		return nil, fmt.Errorf("no database type : [%s]", dsn.Scheme)
@@ -108,20 +118,26 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		defer maker.Close(&err)
 		var opt TableOption
 
-		// 如果是clickhouse 表
-		if cktable, ok := table.(ClickhouseTable); ok {
-			opt = cktable.ClickhouseTableOptions(client.database)
-			if opt.TableOptions != "" {
-				tx = tx.Set("gorm:table_options", opt.TableOptions)
+		// 如果DB是clickhouse ， 则尝试解析clickhouse tableoption
+		if client.schmea == schemas.Clickhouse {
+			// 发现确实有clickhouse的tableoption，则解析tableoption
+			if cktable, ok := table.(ClickhouseTable); ok {
+				opt = cktable.ClickhouseTableOptions(client.database)
+				if opt.TableOptions != "" {
+					tx = tx.Set("gorm:table_options", opt.TableOptions)
+				}
+				if opt.ClusterOptions != "" {
+					tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
+				}
 			}
-			if opt.ClusterOptions != "" {
-				tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
-			}
-		} else if mytable, ok := table.(MySQLTable); ok {
-
-			opt = mytable.MySQLTableOptions(client.database)
-			if opt.TableOptions != "" {
-				tx = tx.Set("gorm:table_options", opt.TableOptions)
+			// 如果DB是mysql ，则尝试解析mysql tableoption
+		} else if client.schmea == schemas.MySQL {
+			// 发现确实db是mysql，则解析tableoption
+			if mytable, ok := table.(MySQLTable); ok {
+				opt = mytable.MySQLTableOptions(client.database)
+				if opt.TableOptions != "" {
+					tx = tx.Set("gorm:table_options", opt.TableOptions)
+				}
 			}
 		}
 		err = tx.AutoMigrate(table)
