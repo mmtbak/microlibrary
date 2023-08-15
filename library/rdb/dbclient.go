@@ -122,7 +122,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		if client.schmea == schemas.Clickhouse {
 			// 发现确实有clickhouse的tableoption，则解析tableoption
 			if cktable, ok := table.(ClickhouseTable); ok {
-				opt = cktable.ClickhouseTableOptions(client.database)
+				opt = cktable.ClickhouseTableOption(client.database)
 				if opt.TableOptions != "" {
 					tx = tx.Set("gorm:table_options", opt.TableOptions)
 				}
@@ -134,7 +134,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		} else if client.schmea == schemas.MySQL {
 			// 发现确实db是mysql，则解析tableoption
 			if mytable, ok := table.(MySQLTable); ok {
-				opt = mytable.MySQLTableOptions(client.database)
+				opt = mytable.MySQLTableOption(client.database)
 				if opt.TableOptions != "" {
 					tx = tx.Set("gorm:table_options", opt.TableOptions)
 				}
