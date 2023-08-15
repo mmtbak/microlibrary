@@ -42,7 +42,7 @@ var LogLevelMap = map[string]logger.LogLevel{
 }
 
 // NewDBClient Create DBEngine instance
-func NewDBClient(conf config.AccessPoint) (*DBClient, error) {
+func NewDBClient(conf config.AccessPoint, opts ...gorm.Option) (*DBClient, error) {
 
 	var conn *gorm.DB
 	var err error
@@ -59,9 +59,9 @@ func NewDBClient(conf config.AccessPoint) (*DBClient, error) {
 
 	switch dsn.Scheme {
 	case "mysql":
-		conn, err = gorm.Open(mysql.Open(dsn.Source), &gorm.Config{})
+		conn, err = gorm.Open(mysql.Open(dsn.Source), opts...)
 	case "clickhouse":
-		conn, err = gorm.Open(clickhouse.Open(conf.Source), &gorm.Config{})
+		conn, err = gorm.Open(clickhouse.Open(conf.Source), opts...)
 	default:
 		return nil, fmt.Errorf("no database type : [%s]", dsn.Scheme)
 	}
@@ -104,24 +104,26 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 
 	var err error
 	for _, table := range tables {
+		tx, maker := NewSessionMaker(nil, client)
+		defer maker.Close(&err)
 		var opt TableOption
-		tx := client.NewSession()
 
 		// 如果是clickhouse 表
-		if optable, ok := table.(TableWithOption); ok {
-			opt = optable.TableOptions(client.database)
+		if cktable, ok := table.(ClickhouseTable); ok {
+			opt = cktable.ClickhouseTableOptions(client.database)
 			if opt.TableOptions != "" {
 				tx = tx.Set("gorm:table_options", opt.TableOptions)
 			}
 			if opt.ClusterOptions != "" {
 				tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
 			}
+		} else if mytable, ok := table.(MySQLTable); ok {
+
+			opt = mytable.MySQLTableOptions(client.database)
+			if opt.TableOptions != "" {
+				tx = tx.Set("gorm:table_options", opt.TableOptions)
+			}
 		}
-		// else {
-		// 	// 默认行为
-		// 	defaultoption := "CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-		// 	tx = tx.Set("gorm:table_options", defaultoption)
-		// }
 		err = tx.AutoMigrate(table)
 		if err != nil {
 			return err

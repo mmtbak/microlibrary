@@ -7,8 +7,11 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-type TableWithOption interface {
-	TableOptions(dbname string) TableOption
+type ClickhouseTable interface {
+	ClickhouseTableOptions(dbname string) TableOption
+}
+type MySQLTable interface {
+	MySQLTableOptions(dbname string) TableOption
 }
 
 type TableOption struct {
@@ -23,7 +26,7 @@ type DefaultClickHouseTable struct {
 }
 
 // TableOptionsClickHouse  gorm
-func (table DefaultClickHouseTable) TableOptions(dbname string) TableOption {
+func (table DefaultClickHouseTable) ClickhouseTableOptions(dbname string) TableOption {
 	return TableOption{
 		TableOptions:   "ENGINE=ReplicatedMergeTree ORDER BY time PARTITION BY toYYYYMMDD(time)",
 		ClusterOptions: "on cluster default_cluster",
@@ -37,7 +40,7 @@ type DefaultClickHouseDistributedTable struct {
 }
 
 // TableOptionsClickHouse 配置Clickhouse的创建options
-func (table DefaultClickHouseDistributedTable) TableOptions(dbname string) TableOption {
+func (table DefaultClickHouseDistributedTable) ClickhouseTableOptions(dbname string) TableOption {
 	item := new(DefaultClickHouseTable)
 	table_name := schema.NamingStrategy{}.TableName(reflect.TypeOf(item).Elem().Name())
 	return TableOption{

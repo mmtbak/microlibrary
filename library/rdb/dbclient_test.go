@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/mmtbak/microlibrary/library/config"
+	"gorm.io/gorm"
 )
 
 func TestDBClient(t *testing.T) {
@@ -17,7 +18,9 @@ func TestDBClient(t *testing.T) {
 			"sqllog":      true,
 		},
 	}
-	client, err := NewDBClient(ac)
+	client, err := NewDBClient(ac, &gorm.Config{
+		DryRun: true,
+	})
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -43,7 +46,9 @@ func TestClickHouseDBClient(t *testing.T) {
 		},
 	}
 
-	client, err := NewDBClient(ac)
+	client, err := NewDBClient(ac, &gorm.Config{
+		DryRun: true,
+	})
 	if err != nil {
 		fmt.Println(err)
 		return
