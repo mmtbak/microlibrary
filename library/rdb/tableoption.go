@@ -56,6 +56,6 @@ type DefaultMySQLTable struct {
 func (table DefaultMySQLTable) MySQLTableOption(dbname string) TableOption {
 
 	return TableOption{
-		TableOptions: "ENGINE=Memory DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+		TableOptions: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	}
 }
