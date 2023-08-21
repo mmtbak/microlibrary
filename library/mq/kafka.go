@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/mmtbak/microlibrary/library/config"
@@ -13,48 +12,24 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var (
-	// default = 9
-	numOfPartition = 9
-	// default = 3
-	numOfReplica = 3
-	// default 1s
-	autoCommitSecond = 1
-)
-
 // KafkaMessageQueue  kafka实现的队列
 type KafkaMessageQueue struct {
-	config       config.AccessPoint
+	access       config.AccessPoint
 	hosts        []string
 	topics       []string
 	producer     sarama.SyncProducer
-	option       kafkaOption
+	config       *KafkaConfig
 	producerOnce sync.Once
 	user         string
 	password     string
 }
 
-// kafkaOption @Description:
-type kafkaOption struct {
-	ConsumerGroup    string
-	NumPartition     int
-	NumOfReplica     int
-	AutoCommitSecond int
-	BufferSize       int
-	OffsetNewest     bool // 最新偏移消息
-}
-
 // NewKafkaMessageQueue new message queue
 func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
 	var err error
-	var op = kafkaOption{
-		NumPartition:     numOfPartition,
-		NumOfReplica:     numOfReplica,
-		AutoCommitSecond: 1,
-		OffsetNewest:     true, // 默认消费最新消息
-		BufferSize:       1000,
-	}
-	dsndata, err := conf.Decode(&op)
+	var config *KafkaConfig
+
+	dsndata, err := conf.Decode(nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -62,20 +37,26 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
 	hoststr := dsndata.Hostport
 	hosts := strings.Split(hoststr, ",")
 	// params 的解析
-	params := dsndata.Params
-	topicstr, ok := params["topic"]
-	if !ok {
-		return nil, fmt.Errorf("kafka dsn need param 'topic'")
+
+	if dsndata.Params == nil {
+		config, err = ParseConfig(dsndata.Params)
+		if err != nil {
+			return nil, err
+		}
 	}
-	topics := strings.Split(topicstr, ",")
+
+	topics := config.Topics
+	if len(topics) == 0 {
+		return nil, errors.New("topics is empty")
+	}
 	// producer 发送时创建
 	// consumer group 消费时创建
 	kafkamq := KafkaMessageQueue{
-		config:   conf,
+		access:   conf,
+		config:   config,
 		hosts:    hosts,
 		topics:   topics,
 		producer: nil,
-		option:   op,
 		user:     dsndata.User,
 		password: dsndata.Password,
 	}
@@ -118,8 +99,8 @@ func (mq *KafkaMessageQueue) CreateTopic(topic string) error {
 	}
 
 	topicDetail := &sarama.TopicDetail{}
-	topicDetail.NumPartitions = int32(numOfPartition)
-	topicDetail.ReplicationFactor = int16(numOfReplica)
+	topicDetail.NumPartitions = int32(mq.config.NumOfPartition)
+	topicDetail.ReplicationFactor = int16(mq.config.NumOfPartition)
 	topicDetail.ConfigEntries = make(map[string]*string)
 
 	err = clusteradmin.CreateTopic(topic, topicDetail, false)
@@ -137,10 +118,7 @@ func (mq *KafkaMessageQueue) SyncSchema() error {
 func (mq *KafkaMessageQueue) getProducer() (sarama.SyncProducer, error) {
 	var err error
 	mq.producerOnce.Do(func() {
-		prodconfig := sarama.NewConfig()
-		prodconfig.Producer.RequiredAcks = sarama.WaitForAll
-		prodconfig.Producer.Retry.Max = 3
-		prodconfig.Producer.Return.Successes = true
+		prodconfig := mq.config.GenConfig()
 		mq.producer, err = sarama.NewSyncProducer(mq.hosts, prodconfig)
 	})
 	if err != nil {
@@ -152,26 +130,14 @@ func (mq *KafkaMessageQueue) getProducer() (sarama.SyncProducer, error) {
 func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 	var err error
 	var consumer sarama.ConsumerGroup
-	op := mq.option
-	consumerconfig := sarama.NewConfig()
-	consumerconfig.ChannelBufferSize = op.BufferSize
-	consumerconfig.Consumer.Return.Errors = true
-	if op.OffsetNewest {
-		consumerconfig.Consumer.Offsets.Initial = sarama.OffsetNewest
-	} else {
-		consumerconfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-	}
-	consumerconfig.Consumer.Offsets.AutoCommit.Enable = true
-	consumerconfig.Consumer.Offsets.AutoCommit.Interval = time.Duration(op.AutoCommitSecond * int(time.Second))
+	consumerconfig := mq.config.GenConfig()
 	if mq.user != "" && mq.password != "" {
 		consumerconfig.Net.SASL.Enable = true
 		consumerconfig.Net.SASL.User = mq.user
 		consumerconfig.Net.SASL.Password = mq.password
 		consumerconfig.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 	}
-	// 默认改成最新的offset
-	// consumerconfig.Version = sarama.V0_11_0_2
-	consumer, err = sarama.NewConsumerGroup(mq.hosts, op.ConsumerGroup, consumerconfig)
+	consumer, err = sarama.NewConsumerGroup(mq.hosts, mq.config.ConsumerGroup, consumerconfig)
 	if err != nil {
 		slog.Error("err:%s", err)
 		return nil, errors.Wrap(err, "new consumer group failed")
@@ -191,6 +157,8 @@ func (mq *KafkaMessageQueue) SendMessage(msg []byte, opts ...SendMsgOption) erro
 			Topic:     topic,
 			Value:     sarama.ByteEncoder(msg),
 			Timestamp: opt.Sendtime,
+			// send key
+			Key: sarama.StringEncoder(opt.Key),
 		}); err != nil {
 			return err
 		}

@@ -27,7 +27,7 @@ type DSN struct {
 }
 
 //Decode decode
-func (p AccessPoint) Decode(op interface{}) (DSN, error) {
+func (p AccessPoint) Decode(op interface{}, param interface{}) (DSN, error) {
 
 	var err error
 	if op != nil {
@@ -37,6 +37,12 @@ func (p AccessPoint) Decode(op interface{}) (DSN, error) {
 		}
 	}
 	dsndata := dsnparser.Parse(p.Source)
+	if param != nil {
+		err = mapstructure.Decode(dsndata.GetParams(), param)
+		if err != nil {
+			return DSN{}, err
+		}
+	}
 
 	dsn := DSN{
 		RAW:       dsndata.GetRaw(),

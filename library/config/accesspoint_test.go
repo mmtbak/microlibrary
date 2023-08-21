@@ -30,7 +30,7 @@ func TestAccessPoint(t *testing.T) {
 
 	for i, testcase := range testcases {
 		fmt.Println("idx :", i)
-		dsn, err := testcase.data.Decode(&testcase.param)
+		dsn, err := testcase.data.Decode(&testcase.param, nil)
 		if err != nil {
 			fmt.Println(err)
 			continue

@@ -61,7 +61,7 @@ func NewDBClient(conf config.AccessPoint, opts ...gorm.Option) (*DBClient, error
 		MaxIdleConn: 100,
 	}
 
-	dsn, err := conf.Decode(&op)
+	dsn, err := conf.Decode(&op, nil)
 	if err != nil {
 		return nil, err
 	}
