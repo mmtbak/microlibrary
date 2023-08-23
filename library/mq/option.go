@@ -41,6 +41,7 @@ func MergeSendMsgOptions(opts []SendMsgOption) SendMsgOption {
 
 type ConsumeMsgOption struct {
 	Poolsize int
+	Limit    int
 	Ctx      context.Context
 }
 
@@ -57,6 +58,10 @@ func (opt *ConsumeMsgOption) WihtContext(ctx context.Context) *ConsumeMsgOption 
 }
 func (opt *ConsumeMsgOption) WihtPoolsize(size int) *ConsumeMsgOption {
 	opt.Poolsize = size
+	return opt
+}
+func (opt *ConsumeMsgOption) WihtLimit(limit int) *ConsumeMsgOption {
+	opt.Limit = limit
 	return opt
 }
 

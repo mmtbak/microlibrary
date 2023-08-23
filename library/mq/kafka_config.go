@@ -52,12 +52,12 @@ func NewdefaulKafkaConfig() *KafkaConfig {
 		AutoCommitSecond: 1,
 		BufferSize:       1024,
 		Initial:          sarama.OffsetNewest,
-		Version:          sarama.V0_11_0_2,
+		Version:          sarama.V1_1_1_0,
 		ClientID:         "microlib-client",
 	}
 }
 
-func ParseConfig(param map[string]string) (*KafkaConfig, error) {
+func ParseKafkaConfig(param map[string]string) (*KafkaConfig, error) {
 	var err error
 	config := NewdefaulKafkaConfig()
 	for name, val := range param {

@@ -13,14 +13,7 @@ const messageText = "message test "
 
 func TestKafkaMessageQueue(t *testing.T) {
 	var kafkaconf = config.AccessPoint{
-		Source: "kafka://127.0.0.1:9092/?topic=my-event",
-		Options: map[string]interface{}{
-			"consumergroup": "my-event-grp",
-			"numpartition":  3,
-			"numreplica":    3,
-			"buffersize":    100,
-			"offsetnewest":  true,
-		},
+		Source: "kafka://127.0.0.1:9092/?topics=my-event&consumergroup=my-event-group&numpartition=3&numreplica=3&inital=oldest",
 	}
 	kafkamq, err := NewKafkaMessageQueue(kafkaconf)
 	if err != nil {

@@ -2,6 +2,7 @@ package mq
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/mmtbak/microlibrary/library/config"
 	"github.com/panjf2000/ants/v2"
 	"github.com/pkg/errors"
-	"golang.org/x/exp/slog"
 )
 
 // KafkaMessageQueue  kafka实现的队列
@@ -29,7 +29,7 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
 	var err error
 	var config *KafkaConfig
 
-	dsndata, err := conf.Decode(nil, nil)
+	dsndata, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
 	hosts := strings.Split(hoststr, ",")
 	// params 的解析
 
-	if dsndata.Params == nil {
-		config, err = ParseConfig(dsndata.Params)
+	if dsndata.Params != nil {
+		config, err = ParseKafkaConfig(dsndata.Params)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +139,6 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 	}
 	consumer, err = sarama.NewConsumerGroup(mq.hosts, mq.config.ConsumerGroup, consumerconfig)
 	if err != nil {
-		slog.Error("err:%s", err)
 		return nil, errors.Wrap(err, "new consumer group failed")
 	}
 	return consumer, nil
@@ -204,10 +203,10 @@ func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...Consu
 				if errors.Is(err, sarama.ErrOutOfBrokers) {
 					err = errors.Wrap(sarama.ErrOutOfBrokers, "conn disconnect")
 				}
-				slog.Error("kafka error", err)
+				log.Println("kafka error", err)
 			}
 			// check if context was cancelled, signaling that the consumer should stop
-			if opt.Ctx.Err() != nil {
+			if opt.Ctx.Done() != nil {
 				err = errors.Errorf("context was cancelled")
 				return
 			}

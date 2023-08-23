@@ -19,7 +19,7 @@ type MongoClient struct {
 // NewMongoClient Create DBEngine instance
 func NewMongoClient(conf config.AccessPoint) (*MongoClient, error) {
 
-	dsn, err := conf.Decode(nil, nil)
+	dsn, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err
 	}

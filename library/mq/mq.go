@@ -31,7 +31,7 @@ type IMessage interface {
 
 // NewMessageQueue ...
 func NewMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
-	dsn, err := conf.Decode(nil, nil)
+	dsn, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err
 	}

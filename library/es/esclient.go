@@ -33,7 +33,7 @@ func NewESClient(conf config.AccessPoint) (*ESClient, error) {
 		EnableSQLLog: false,
 	}
 
-	dsn, err := conf.Decode(&op, nil)
+	dsn, err := conf.Decode(&op)
 	if err != nil {
 		return nil, err
 	}
