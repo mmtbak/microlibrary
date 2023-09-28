@@ -2,7 +2,6 @@ package mq
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 
@@ -15,13 +14,13 @@ import (
 // KafkaMessageQueue  kafka实现的队列
 type KafkaMessageQueue struct {
 	access       config.AccessPoint
+	config       *KafkaConfig
+	dsndata      config.DSN
 	hosts        []string
 	topics       []string
 	producer     sarama.SyncProducer
-	config       *KafkaConfig
 	producerOnce sync.Once
-	user         string
-	password     string
+	consumer     sarama.ConsumerGroup
 }
 
 // NewKafkaMessageQueue new message queue
@@ -49,16 +48,25 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
 	if len(topics) == 0 {
 		return nil, errors.New("topics is empty")
 	}
+
+	// Test Kafka connection
+	cfg := sarama.NewConfig()
+	clusteradmin, err := sarama.NewClusterAdmin(hosts, cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer clusteradmin.Close()
+
 	// producer 发送时创建
 	// consumer group 消费时创建
 	kafkamq := KafkaMessageQueue{
 		access:   conf,
 		config:   config,
+		dsndata:  dsndata,
 		hosts:    hosts,
 		topics:   topics,
 		producer: nil,
-		user:     dsndata.User,
-		password: dsndata.Password,
+		consumer: nil,
 	}
 	return &kafkamq, nil
 }
@@ -131,17 +139,28 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 	var err error
 	var consumer sarama.ConsumerGroup
 	consumerconfig := mq.config.GenConfig()
-	if mq.user != "" && mq.password != "" {
+	if mq.dsndata.User != "" || mq.dsndata.Password != "" {
 		consumerconfig.Net.SASL.Enable = true
-		consumerconfig.Net.SASL.User = mq.user
-		consumerconfig.Net.SASL.Password = mq.password
+		consumerconfig.Net.SASL.User = mq.dsndata.User
+		consumerconfig.Net.SASL.Password = mq.dsndata.User
 		consumerconfig.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 	}
+
+	cfg := sarama.NewConfig()
+	clusteradmin, err := sarama.NewClusterAdmin(mq.hosts, cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = clusteradmin.Close()
+	}()
+
 	consumer, err = sarama.NewConsumerGroup(mq.hosts, mq.config.ConsumerGroup, consumerconfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "new consumer group failed")
+		return nil, err
 	}
-	return consumer, nil
+
+	return consumer, err
 }
 
 // SendMessage implements
@@ -194,19 +213,20 @@ func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...Consu
 	go func() {
 		defer wg.Done()
 		handler := &kafkaConsumerGroupHandler{
-			pool: pool,
+			pool:   pool,
+			option: opt,
 		}
 		for {
 			// still waiting for user to cancel
-			if err := consumer.Consume(opt.Ctx, mq.topics, handler); err != nil {
+			err = consumer.Consume(opt.Ctx, mq.topics, handler)
+			if err != nil {
 				// 当setup失败的时候，error会返回到这里
 				if errors.Is(err, sarama.ErrOutOfBrokers) {
 					err = errors.Wrap(sarama.ErrOutOfBrokers, "conn disconnect")
+					break
 				}
-				log.Println("kafka error", err)
 			}
-			// check if context was cancelled, signaling that the consumer should stop
-			if opt.Ctx.Done() != nil {
+			if opt.Ctx.Err() != nil {
 				err = errors.Errorf("context was cancelled")
 				return
 			}
@@ -254,7 +274,8 @@ func (msg *KafkaMessage) Nack() error {
 
 // kafkaConsumerGroupHandler consume interface
 type kafkaConsumerGroupHandler struct {
-	pool *ants.PoolWithFunc
+	pool   *ants.PoolWithFunc
+	option ConsumeMsgOption
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -277,9 +298,10 @@ func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSes
 	// Do not move the code below to a goroutine.
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
+	msgchan := claim.Messages()
 	for {
 		select {
-		case message := <-claim.Messages():
+		case message := <-msgchan:
 			//log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s",
 			//	string(message.Value), message.Timestamp, message.Topic)
 			msg := KafkaMessage{
@@ -289,6 +311,7 @@ func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSes
 			}
 			if err := h.pool.Invoke(&msg); err != nil {
 				fmt.Println(err)
+				return err
 			}
 		// Should return when `session.Context()` is done.
 		// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:
@@ -296,5 +319,6 @@ func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSes
 		case <-session.Context().Done():
 			return nil
 		}
+
 	}
 }

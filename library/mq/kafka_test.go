@@ -96,9 +96,9 @@ func TestKafkaOffsetOldest(t *testing.T) {
 	cancel()
 }
 
-func TestKafkaReceiveMessage(t *testing.T) {
+func TestKafkaConsumeMessage(t *testing.T) {
 	var kafkaconf = config.AccessPoint{
-		Source: "kafka://user:password@127.0.0.1:9092/?topic=my-subscription-topic",
+		Source: "kafka://user:password@127.0.0.1:9092/?topics=my-subscription-topic",
 		Options: map[string]interface{}{
 			"consumergroup": "mygroup",
 			"numpartition":  3,
@@ -151,6 +151,33 @@ func TestKafkaReceiveMessageNoAck(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	<-ctx.Done()
+	cancel()
+}
+
+func TestKafkaConsumeMessageOption(t *testing.T) {
+	var kafkaconf = config.AccessPoint{
+		Source: "kafka://127.0.0.1:9092/?topics=my-subscription-topic&consumegroup=mygroup&version=1.1.1",
+	}
+	kafkamq, err := NewKafkaMessageQueue(kafkaconf)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// ctx, cancel := context.WithCancel(context.Background())
+	copt := NewConsumeMsgOption().WihtContext(ctx).WihtPoolsize(10).Build()
+
+	err = kafkamq.ConsumeMessage(func(msg IMessage) {
+		fmt.Println("recivev message ", msg.ID())
+		fmt.Println("recv --->", string(msg.Body()))
+		_ = msg.Ack()
+	}, copt)
+	if err != nil {
+		fmt.Println(err)
+		t.Error(err)
+	}
+
 	<-ctx.Done()
 	cancel()
 }
