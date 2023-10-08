@@ -7,6 +7,7 @@ replace github.com/kos-v/dsnparser => github.com/goodaye/dsnparser v0.0.0-202211
 require (
 	github.com/IBM/sarama v1.40.1
 	github.com/InVisionApp/go-logger v1.0.1
+	github.com/coocood/freecache v1.2.4
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/kos-v/dsnparser v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
@@ -14,7 +15,7 @@ require (
 	github.com/panjf2000/ants/v2 v2.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/qiniu/qmgo v1.1.8
-	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
+	gopkg.in/go-playground/assert.v1 v1.2.1
 	gorm.io/driver/clickhouse v0.5.1
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/gorm v1.25.2
@@ -24,6 +25,7 @@ require (
 	github.com/ClickHouse/ch-go v0.53.0 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.8.3 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.3.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230111030713-bf00bc1b83b6 // indirect
@@ -71,6 +73,5 @@ require (
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

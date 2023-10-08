@@ -20,11 +20,11 @@ type BulkWriter[T any] struct {
 	// 条件变量
 	cond *sync.Cond
 	// 用于监控
-	queueSize               int64 // 在等待存入clickhouse中的队列长度
-	queueSizePeriod         int64 // 在等待存入clickhouse中的队列长度-周期
-	itemSize                int64 // 队列中所有批量数组中的数据项加起来的长度，例如队列为T[200],T[101]，则返回301
-	itemSizePeriod          int64 // 队列中所有批量数组中的数据项加起来的长度-周期
-	waitingWorkerSize       int64 // 执行append的worker数量
+	queueSize               int64
+	queueSizePeriod         int64
+	itemSize                int64
+	itemSizePeriod          int64
+	waitingWorkerSize       int64
 	waitingWorkerSizePeriod int64
 }
 
