@@ -1,40 +1,45 @@
 package cache
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/coocood/freecache"
 	"github.com/mmtbak/microlibrary/library/config"
 )
 
-// expireHours  3600 seconds
-const expireHours = 1
-
-// sizeKB 10MB
-const sizeKB = 10 * 1024
+// default sizeKB 10MB
+const defaultcachesizekb = 10 * 1024
 
 // FreeCache set
 type FreeCache struct {
-	cache *freecache.Cache
-	op    cacheOption
+	cache  *freecache.Cache
+	params freecacheParam
 }
 
-type cacheOption struct {
-	SizeKB      int
-	ExpireHours int
+type freecacheParam struct {
+	SizeKB int
 }
 
 // NewFreecache free cache
 func NewFreecache(conf config.AccessPoint) (*FreeCache, error) {
-	var op = cacheOption{
-		ExpireHours: expireHours,
-		SizeKB:      sizeKB,
+	var param = freecacheParam{
+		SizeKB: defaultcachesizekb,
 	}
-	_, err := conf.Decode(&op)
+
+	dsndata, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err
 	}
-	cache := freecache.NewCache(op.SizeKB * 1024)
-	// debug.SetGCPercent(20)
-	return &FreeCache{cache: cache, op: op}, nil
+	params := dsndata.Params
+	if sizekb, ok := params["sizekb"]; ok {
+		param.SizeKB, err = strconv.Atoi(sizekb)
+		if err != nil {
+			return nil, err
+		}
+	}
+	cache := freecache.NewCache(param.SizeKB * 1024)
+	return &FreeCache{cache: cache, params: param}, nil
 }
 
 // Get key to cache
@@ -43,8 +48,8 @@ func (c *FreeCache) Get(key []byte) (value []byte, err error) {
 }
 
 // Set key to cache
-func (c *FreeCache) Set(key, value []byte) error {
-	return c.cache.Set(key, value, c.op.ExpireHours*3600)
+func (c *FreeCache) Set(key, value []byte, expiration time.Duration) error {
+	return c.cache.Set(key, value, int(expiration.Seconds()))
 }
 
 // Delete key to cache
@@ -53,6 +58,6 @@ func (c *FreeCache) Delete(key []byte) bool {
 }
 
 // Active key to cache
-func (c *FreeCache) Active(key []byte) error {
-	return c.cache.Touch(key, c.op.ExpireHours*3600)
+func (c *FreeCache) Active(key []byte, expiration time.Duration) error {
+	return c.cache.Touch(key, int(expiration.Seconds()))
 }

@@ -3,6 +3,7 @@ package cache
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mmtbak/microlibrary/library/config"
 )
@@ -10,13 +11,13 @@ import (
 // Cache interface
 type Cache interface {
 	// set 填入key/value
-	Set(key, value []byte) error
+	Set(key, value []byte, expiration time.Duration) error
 	// get 根据key 查询value
 	Get(key []byte) (value []byte, err error)
 	// delete 删除key
 	Delete(key []byte) bool
 	// Active 激活key ,刷新key的过期时间
-	Active(key []byte) error
+	Active(key []byte, expiration time.Duration) error
 }
 
 // NewCache new cache
