@@ -1,24 +1,32 @@
 // Package bulkwriter
-// 批量处理方法，用于累计一段时间或者累计到一定量的数据都批量 插入或者输出
+// bulkwriter 是一个数据缓存器，当缓存器缓存的数量达到限制或者定时达到限制后，触发一次批处理，清理缓存数据. 再重置定时器与limit计数器
+// 针对场景类似ElasticSearch/Clickhouse等AnalysisDB，大量单次写入时会触发写限制而造成业务异常，需要一次批量写入缓解写入负载。 bulkwriter将单个数据合并成一个大集合数据，再触发一次性出行
 package bulkwriter
 
 import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/panjf2000/ants/v2"
 )
 
 // BulkWriter 批量处理器
 type BulkWriter[T any] struct {
-	mu         sync.Mutex
-	buffer     []T
-	limit      int
-	tick       time.Duration
-	ticker     *time.Ticker
-	CBFunc     func([]T)
-	bufferFull chan interface{}
+	mu          sync.Mutex
+	buffer      []T           // buffer 数据缓存
+	msglimit    int           // 批处理消息数量上限
+	tick        time.Duration // 批处理定时时间长度
+	WriteFunc   func([]T)     // 回调批量处理函数 ，批量处理器
+	writerlimit int           //最大writer数量
+	ticker      *time.Ticker
+	bufferFull  chan interface{} //buffer满的信号量
 	// 条件变量
 	cond *sync.Cond
+
+	// 执行池
+	pool *ants.PoolWithFunc
+
 	// 用于监控
 	queueSize               int64
 	queueSizePeriod         int64
@@ -28,21 +36,24 @@ type BulkWriter[T any] struct {
 	waitingWorkerSizePeriod int64
 }
 
-// NewBulkWriter 创建一个批量处理缓存器， 当缓存器缓存的数量达到一定条件后，触发一个批次处理函数。清理缓存数据
-// @limit 缓存数据数量上限
-// @tick 缓存时间上限
-// @buckfunc 批量处理函数
-func NewBulkWriter[T any](limit int, tick time.Duration, bulkfunc func([]T)) *BulkWriter[T] {
+// NewBulkWriter 创建一个批量处理缓存器， 当缓存器缓存的消息数量达到 limit 或者时间达到tick之后，触发一个批次处理函数writerfunc,清理缓存数据.
+// @limit 批处理消息数量上限
+// @tick 批处理缓存定时时间长度
+// @writerfunc 批量处理函数
+func NewBulkWriter[T any](limit int, tick time.Duration, writefunc func([]T)) *BulkWriter[T] {
 	writer := BulkWriter[T]{
-		limit:      limit,
+		msglimit:   limit,
 		buffer:     make([]T, 0, limit),
 		tick:       tick,
 		ticker:     time.NewTicker(tick),
-		CBFunc:     bulkfunc,
+		WriteFunc:  writefunc,
 		bufferFull: make(chan interface{}),
 		// 条件变量
 		cond: sync.NewCond(&sync.Mutex{}),
 	}
+
+	// 默认只有一一个执行
+	writer.pool, _ = ants.NewPoolWithFunc(1, writer.write, ants.WithNonblocking(false))
 
 	// 定时函数
 	//  buffer满或者 时间到了，清理缓存
@@ -76,6 +87,12 @@ func NewBulkWriter[T any](limit int, tick time.Duration, bulkfunc func([]T)) *Bu
 	return &writer
 }
 
+// SetWriterLimit set writer limit
+func (w *BulkWriter[T]) SetWriterLimit(limit int) {
+	w.writerlimit = limit
+	w.pool, _ = ants.NewPoolWithFunc(limit, w.write, ants.WithNonblocking(false))
+}
+
 // Flush 将已有buffer全部写回数据库，并发消息给Append函数：buffer已经刷清空
 func (writer *BulkWriter[T]) Flush() {
 	writer.mu.Lock()
@@ -91,22 +108,32 @@ func (writer *BulkWriter[T]) Flush() {
 	if len(writer.buffer) > 0 {
 		// 每次最多只读limit个，然后循环
 		for len(writer.buffer) > 0 {
-			readLen := min(len(writer.buffer), writer.limit)
+			readLen := min(len(writer.buffer), writer.msglimit)
 
-			go func(buffer []T) {
-				writer.addInsertQueueAndItemsSize(len(buffer))
-				writer.CBFunc(buffer)
-				writer.subInsertQueueAndItemsSize(len(buffer))
-			}(writer.buffer[:readLen])
+			// go func(buffer []T) {
+			// 	writer.addInsertQueueAndItemsSize(len(buffer))
+			// 	writer.WriteFunc(buffer)
+			// 	writer.subInsertQueueAndItemsSize(len(buffer))
+			// }(writer.buffer[:readLen])
+
+			writer.pool.Invoke(writer.buffer[:readLen])
 
 			writer.buffer = writer.buffer[readLen:]
 		}
 		// 新建buffer
-		writer.buffer = make([]T, 0, writer.limit)
+		writer.buffer = make([]T, 0, writer.msglimit)
 		writer.brocast()
 	}
 	// 重置ticker
 	writer.ticker.Reset(writer.tick)
+}
+
+// write callback processfunc
+func (w *BulkWriter[T]) write(i interface{}) {
+	data := i.([]T)
+	w.addInsertQueueAndItemsSize(len(data))
+	w.WriteFunc(data)
+	w.subInsertQueueAndItemsSize(len(data))
 }
 
 // Append Append
@@ -121,7 +148,7 @@ func (writer *BulkWriter[T]) Append(values ...T) {
 
 	writer.mu.Lock()
 	// 先看看buffer是不是满了
-	for len(writer.buffer) >= writer.limit {
+	for len(writer.buffer) >= writer.msglimit {
 		// 如果满了，释放锁，给Flush发消息，然后等到条件变量释放
 		writer.mu.Unlock()
 		writer.bufferFull <- nil
@@ -135,7 +162,7 @@ func (writer *BulkWriter[T]) Append(values ...T) {
 
 func (writer *BulkWriter[T]) wait() {
 	writer.cond.L.Lock()
-	for len(writer.buffer) > writer.limit {
+	for len(writer.buffer) > writer.msglimit {
 		writer.cond.Wait()
 	}
 	writer.cond.L.Unlock()

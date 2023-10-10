@@ -11,20 +11,23 @@ import (
 )
 
 func TestNewBufferWriter(t *testing.T) {
-	writer := NewBulkWriter[int](5000, 2*time.Second,
+	writer := NewBulkWriter[int](10000, 2*time.Second,
 		func(t []int) {
+			// simulate  long time task
+			time.Sleep(3 * time.Second)
 			fmt.Println("输入长度：", len(t))
 		},
 	)
 	fmt.Println(writer)
 }
 
-func TestAppend(t *testing.T) {
+func TestWriter(t *testing.T) {
 	// 测试轮次
-	testTurn := 30
-	testGoroutine := 100
+	testTurn := 3000
+	numofGoroutine := 100
 	total := 10123
-	limit := 5000
+	datalimit := 1000
+	bluklimit := 10 * datalimit
 	// 计算总量
 	calcNum := 0
 	var mu sync.Mutex
@@ -34,22 +37,25 @@ func TestAppend(t *testing.T) {
 		value = append(value, i)
 	}
 
-	writer := NewBulkWriter(limit, 2*time.Second,
+	writer := NewBulkWriter(bluklimit, 2*time.Second,
 		func(t []int) {
-			if len(t) > limit {
+			fmt.Println("in writer func , datalen :", len(t))
+			if len(t) > bluklimit {
 				panic("too many values ...")
 			}
 			// 模拟一次插入需要一点时间
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			mu.Lock()
 			calcNum += len(t)
 			mu.Unlock()
 		},
 	)
+	writer.SetWriterLimit(100)
 
 	wg := sync.WaitGroup{}
-	wg.Add(testGoroutine)
-	for j := 0; j < testGoroutine; j++ {
+	wg.Add(numofGoroutine)
+	for j := 0; j < numofGoroutine; j++ {
+		fmt.Println("start goroutine:", j)
 		go func() {
 			for i := 0; i < testTurn; i++ {
 				writer.Append(value...)
@@ -58,9 +64,16 @@ func TestAppend(t *testing.T) {
 			wg.Done()
 		}()
 	}
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			fmt.Println(time.Now(), ":  calcNUm: ", calcNum)
+		}
+	}()
 	wg.Wait()
 	// 等待writer干完
 	time.Sleep(4 * time.Second)
 	fmt.Println("总量:", calcNum)
-	assert.Equal(t, calcNum, testTurn*testGoroutine*total)
+	assert.Equal(t, calcNum, testTurn*numofGoroutine*total)
 }
