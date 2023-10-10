@@ -87,10 +87,11 @@ func NewBulkWriter[T any](limit int, tick time.Duration, writefunc func([]T)) *B
 	return &writer
 }
 
-// SetWriterLimit set writer limit
-func (w *BulkWriter[T]) SetWriterLimit(limit int) {
+// WithWriterLimit set writer limit
+func (w *BulkWriter[T]) WithWriterLimit(limit int) *BulkWriter[T] {
 	w.writerlimit = limit
 	w.pool, _ = ants.NewPoolWithFunc(limit, w.write, ants.WithNonblocking(false))
+	return w
 }
 
 // Flush 将已有buffer全部写回数据库，并发消息给Append函数：buffer已经刷清空

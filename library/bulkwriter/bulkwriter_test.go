@@ -49,8 +49,7 @@ func TestWriter(t *testing.T) {
 			calcNum += len(t)
 			mu.Unlock()
 		},
-	)
-	writer.SetWriterLimit(100)
+	).WithWriterLimit(100)
 
 	wg := sync.WaitGroup{}
 	wg.Add(numofGoroutine)
