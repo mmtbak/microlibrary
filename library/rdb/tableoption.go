@@ -1,17 +1,23 @@
 package rdb
 
 import (
+	"fmt"
 	"reflect"
 	"time"
 
 	"gorm.io/gorm/schema"
 )
 
+type DataBaseOption struct {
+	Cluster string
+	DBName  string
+}
+
 type ClickhouseTable interface {
-	ClickhouseTableOption(dbname string) TableOption
+	ClickhouseTableOption(option DataBaseOption) TableOption
 }
 type MySQLTable interface {
-	MySQLTableOption(dbname string) TableOption
+	MySQLTableOption(option DataBaseOption) TableOption
 }
 
 type TableOption struct {
@@ -26,11 +32,14 @@ type DefaultClickHouseTable struct {
 }
 
 // TableOptionsClickHouse  gorm
-func (table DefaultClickHouseTable) ClickhouseTableOption(dbname string) TableOption {
-	return TableOption{
-		TableOptions:   "ENGINE=ReplicatedMergeTree ORDER BY time PARTITION BY toYYYYMMDD(time)",
-		ClusterOptions: "on cluster default_cluster",
+func (table DefaultClickHouseTable) ClickhouseTableOption(dbop DataBaseOption) TableOption {
+	top := TableOption{
+		TableOptions: "ENGINE=MergeTree ORDER BY time PARTITION BY toYYYYMMDD(time)",
 	}
+	if dbop.Cluster != "" {
+		top.ClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
+	}
+	return top
 }
 
 // DefaultClickHouseDistributedTable
@@ -40,13 +49,16 @@ type DefaultClickHouseDistributedTable struct {
 }
 
 // TableOptionsClickHouse 配置Clickhouse的创建options
-func (table DefaultClickHouseDistributedTable) ClickhouseTableOption(dbname string) TableOption {
+func (table DefaultClickHouseDistributedTable) ClickhouseTableOption(dbop DataBaseOption) TableOption {
 	item := new(DefaultClickHouseTable)
 	table_name := schema.NamingStrategy{}.TableName(reflect.TypeOf(item).Elem().Name())
-	return TableOption{
-		TableOptions:   "ENGINE=Distributed(default_cluster, " + dbname + ", " + table_name + ",rand())",
-		ClusterOptions: "on cluster default_cluster",
+	top := TableOption{
+		TableOptions: fmt.Sprintf("ENGINE=Distributed(%s, %s, %s, rand()", dbop.Cluster, dbop.DBName, table_name),
 	}
+	if dbop.Cluster != "" {
+		top.ClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
+	}
+	return top
 }
 
 type DefaultMySQLTable struct {

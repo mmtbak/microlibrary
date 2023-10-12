@@ -10,7 +10,9 @@ import (
 
 var dbmysqlclient *DBClient
 
-func init() {
+func TestDBClient(t *testing.T) {
+
+	var tables []string
 	var err error
 	address := config.AccessPoint{
 		Source: "mysql://root:password@tcp(127.0.0.1:3306)/my_dev?charset=utf8&parseTime=true&loc=Local",
@@ -29,13 +31,6 @@ func init() {
 		return
 	}
 	fmt.Println(dbmysqlclient)
-
-}
-
-func TestDBClient(t *testing.T) {
-
-	var tables []string
-	var err error
 	tx := dbmysqlclient.DB().Raw("show tables ").Scan(&tables)
 	if tx.Error != nil {
 		fmt.Println(err)
@@ -47,16 +42,18 @@ func TestDBClient(t *testing.T) {
 func TestClickHouseDBClient(t *testing.T) {
 
 	var ac = config.AccessPoint{
-		Source: "clickhouse://root:password@127.0.0.1:9000/mydb?read_timeout=10s",
+		// Source: "clickhouse://root:password@127.0.0.1:9000/mydb?read_timeout=10s",
+		Source: "clickhouse://9.135.63.32:9000/testdb?dial_timeout=10s&read_timeout=20s",
 		Options: map[string]interface{}{
 			"maxopenconn": 1000,
 			"maxidleconn": 1000,
-			"sqllog":      true,
+			"sqllevel":    "info",
+			"cluster":     "",
 		},
 	}
 
 	client, err := NewDBClient(ac, &gorm.Config{
-		DryRun: true,
+		// DryRun: true,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -69,4 +66,10 @@ func TestClickHouseDBClient(t *testing.T) {
 		return
 	}
 	fmt.Println(tables)
+
+	// newtables := []interface{}{new(DefaultClickHouseTable), new(DefaultClickHouseTable), new(DefaultClickHouseDistributedTable)}
+	newtables := []interface{}{new(DefaultClickHouseTable), new(DefaultClickHouseDistributedTable)}
+	err = client.SyncTables(newtables)
+	fmt.Println(err)
+
 }

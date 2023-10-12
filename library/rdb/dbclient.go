@@ -41,6 +41,7 @@ type DBClientOptions struct {
 	MaxIdleConn int
 	MaxIdleTime string
 	SQLLevel    string
+	Cluster     string
 }
 
 // LogLevelMap log level for config string
@@ -113,6 +114,10 @@ func (client *DBClient) DB() *gorm.DB {
 func (client *DBClient) SyncTables(tables []interface{}) error {
 
 	var err error
+	var dbop = DataBaseOption{
+		Cluster: client.options.Cluster,
+		DBName:  client.database,
+	}
 	for _, table := range tables {
 		tx, maker := NewSessionMaker(nil, client)
 		defer maker.Close(&err)
@@ -122,7 +127,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		if client.schmea == schemas.Clickhouse {
 			// 发现确实有clickhouse的tableoption，则解析tableoption
 			if cktable, ok := table.(ClickhouseTable); ok {
-				opt = cktable.ClickhouseTableOption(client.database)
+				opt = cktable.ClickhouseTableOption(dbop)
 				if opt.TableOptions != "" {
 					tx = tx.Set("gorm:table_options", opt.TableOptions)
 				}
@@ -134,7 +139,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		} else if client.schmea == schemas.MySQL {
 			// 发现确实db是mysql，则解析tableoption
 			if mytable, ok := table.(MySQLTable); ok {
-				opt = mytable.MySQLTableOption(client.database)
+				opt = mytable.MySQLTableOption(dbop)
 				if opt.TableOptions != "" {
 					tx = tx.Set("gorm:table_options", opt.TableOptions)
 				}
