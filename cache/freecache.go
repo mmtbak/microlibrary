@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/coocood/freecache"
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 )
 
 // default sizeKB 10MB

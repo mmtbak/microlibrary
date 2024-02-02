@@ -4,7 +4,7 @@ import (
 	"context"
 
 	log "github.com/InVisionApp/go-logger"
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 	"github.com/qiniu/qmgo"
 )
 

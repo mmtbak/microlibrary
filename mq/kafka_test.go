@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 )
 
 const messageText = "message test "

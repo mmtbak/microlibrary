@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/IBM/sarama"
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 	"github.com/panjf2000/ants/v2"
 	"github.com/pkg/errors"
 )

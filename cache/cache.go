@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 )
 
 // Cache interface

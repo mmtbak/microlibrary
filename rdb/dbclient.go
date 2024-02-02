@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 
 	_ "github.com/go-sql-driver/mysql" // mysql driver
 	"gorm.io/driver/clickhouse"

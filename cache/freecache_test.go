@@ -2,13 +2,14 @@ package cache
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 )
 
-func TestCache(t *testing.T) {
+func TestFreecache(t *testing.T) {
 	var conf = config.AccessPoint{
 		Source: "freecache://localhost/?sizekb=1000",
 	}
@@ -30,6 +31,7 @@ func TestCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println(v)
 	if bytes.Equal(v, value) == false {
 		t.Fatal("value not equal")
 	}

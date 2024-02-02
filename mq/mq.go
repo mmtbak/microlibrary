@@ -3,7 +3,7 @@ package mq
 import (
 	"fmt"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 )
 
 // ConsumeMessageFunc 处理消息方法，默认不应答ack

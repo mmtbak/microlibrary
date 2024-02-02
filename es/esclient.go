@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/mmtbak/microlibrary/library/config"
+	"github.com/mmtbak/microlibrary/config"
 	"github.com/olivere/elastic/v7"
 )
 
