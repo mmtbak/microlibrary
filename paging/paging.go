@@ -6,7 +6,9 @@ import (
 
 // PageRequest 分页请求
 type PageRequest struct {
-	PageSize   int `json:"page_size,omitempty" validate:"gt=0"`
+	// PageSize 请求的分页上限
+	PageSize int `json:"page_size,omitempty" validate:"gt=0"`
+	// PageNumber 请求的分页页号
 	PageNumber int `json:"page_number,omitempty" validate:"gt=0"`
 }
 
@@ -18,19 +20,23 @@ var DefaultPageRequest = PageRequest{
 
 // PageResponse 分页返回
 type PageResponse struct {
-	// 总数
-	Count      int64 `json:"count"`
-	PageSize   int   `json:"page_size"`
-	PageNumber int   `json:"page_number"`
-	// 分页总数
+	// Count 条目总数
+	Count int64 `json:"count"`
+	// 每页数量上限
+	PageSize int `json:"page_size"`
+	// 当前页号
+	PageNumber int `json:"page_number"`
+	// 分页总页数
 	PageCount int `json:"page_count"`
 }
 
 // Limit  根据分页请求计算分页查询的起始偏移量
-func (req PageRequest) Limit() (limit int, start int) {
+// limit 单页限制数量
+// offset 起始偏移量
+func (req PageRequest) Limit() (limit int, offset int) {
 	limit = req.PageSize
-	start = (req.PageNumber - 1) * req.PageSize
-	return limit, start
+	offset = (req.PageNumber - 1) * req.PageSize
+	return limit, offset
 }
 
 // Count  根据分页请求计算 总数
