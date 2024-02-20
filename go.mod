@@ -2,9 +2,10 @@ module github.com/mmtbak/microlibrary
 
 go 1.18
 
-replace github.com/kos-v/dsnparser => github.com/goodaye/dsnparser v0.0.0-20221128102754-449d61e95334
+replace github.com/kos-v/dsnparser => github.com/mmtbak/dsnparser v0.0.0-20240220012319-a0bde160948e
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/IBM/sarama v1.40.1
 	github.com/InVisionApp/go-logger v1.0.1
 	github.com/coocood/freecache v1.2.4
@@ -16,6 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/qiniu/qmgo v1.1.8
 	gopkg.in/go-playground/assert.v1 v1.2.1
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/clickhouse v0.5.1
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/gorm v1.25.5
@@ -37,6 +39,7 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.3.1 // indirect
+	github.com/gorilla/schema v1.2.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
@@ -72,5 +75,4 @@ require (
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

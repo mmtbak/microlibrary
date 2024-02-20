@@ -1,0 +1,7 @@
+resource:
+  database: mysql://user:password@not$valid@host/dbname?tblsprefix=fs_
+  kafka: kafka://username:pasword@tcp(ip1:9093,ip2:9093,ip3:9093)/?topic=vsulblog
+application:
+  gateway:
+    concurrency: 10
+    filesize: 10
