@@ -29,7 +29,7 @@ func TestKafkaMessageQueue(t *testing.T) {
 	ok := false
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	copt := NewConsumeMsgOption().WihtContext(ctx).Build()
-	if err := kafkamq.ConsumeMessage(func(msg IMessage) {
+	if err := kafkamq.ConsumeMessage(func(msg Message) {
 		message := string(msg.Body())
 		fmt.Println("recv --->", message)
 		if message == string(sendMsg) {
@@ -85,7 +85,7 @@ func TestKafkaOffsetOldest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	copt := NewConsumeMsgOption().WihtContext(ctx).Build()
 	go func() {
-		if err := kafkamq.ConsumeMessage(func(msg IMessage) {
+		if err := kafkamq.ConsumeMessage(func(msg Message) {
 			fmt.Println("recv --->", string(msg.Body()))
 			_ = msg.Ack()
 		}, copt); err != nil {
@@ -115,7 +115,7 @@ func TestKafkaConsumeMessage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	copt := NewConsumeMsgOption().WihtContext(ctx).WihtPoolsize(1).Build()
 	go func() {
-		if err := kafkamq.ConsumeMessage(func(msg IMessage) {
+		if err := kafkamq.ConsumeMessage(func(msg Message) {
 			fmt.Println("recv --->", string(msg.Body()))
 			_ = msg.Ack()
 		}, copt); err != nil {
@@ -145,7 +145,7 @@ func TestKafkaReceiveMessageNoAck(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	copt := NewConsumeMsgOption().WihtContext(ctx).WihtPoolsize(1).Build()
 	go func() {
-		if err := kafkamq.ConsumeMessage(func(msg IMessage) {
+		if err := kafkamq.ConsumeMessage(func(msg Message) {
 			fmt.Println("recv --->", string(msg.Body()))
 		}, copt); err != nil {
 			t.Error(err)
@@ -168,7 +168,7 @@ func TestKafkaConsumeMessageOption(t *testing.T) {
 	// ctx, cancel := context.WithCancel(context.Background())
 	copt := NewConsumeMsgOption().WihtContext(ctx).WihtPoolsize(10).Build()
 
-	err = kafkamq.ConsumeMessage(func(msg IMessage) {
+	err = kafkamq.ConsumeMessage(func(msg Message) {
 		fmt.Println("recivev message ", msg.ID())
 		fmt.Println("recv --->", string(msg.Body()))
 		_ = msg.Ack()

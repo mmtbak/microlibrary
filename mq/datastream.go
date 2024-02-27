@@ -5,7 +5,7 @@ import (
 )
 
 type DataStream struct {
-	mq    IMessageQueue
+	mq    MessageQueue
 	data  DataValue
 	datat reflect.Type
 }
@@ -16,7 +16,7 @@ type DataValue interface {
 	Consume() error
 }
 
-func NewDataStream(mq IMessageQueue, dataptr DataValue) *DataStream {
+func NewDataStream(mq MessageQueue, dataptr DataValue) *DataStream {
 
 	return &DataStream{
 		mq:    mq,
@@ -39,7 +39,7 @@ func (ds *DataStream) Consume(opts ...ConsumeMsgOption) error {
 	return err
 }
 
-func (ds *DataStream) ConsumeMessageFunc(msg IMessage) {
+func (ds *DataStream) ConsumeMessageFunc(msg Message) {
 
 	var err error
 	newdata := reflect.New(ds.datat).Interface().(DataValue)

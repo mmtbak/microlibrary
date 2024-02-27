@@ -7,10 +7,10 @@ import (
 )
 
 // ConsumeMessageFunc 处理消息方法，默认不应答ack
-type ConsumeMessageFunc func(IMessage)
+type ConsumeMessageFunc func(Message)
 
-// IMessageQueue  消息队列接口规范
-type IMessageQueue interface {
+// MessageQueue  消息队列接口规范
+type MessageQueue interface {
 	// SyncSchema create topic
 	SyncSchema() error
 	// SendMessage send message
@@ -21,8 +21,8 @@ type IMessageQueue interface {
 	Close() error
 }
 
-// IMessage   message content interface
-type IMessage interface {
+// Message   message content interface
+type Message interface {
 	ID() string
 	Body() []byte
 	Ack() error
@@ -30,7 +30,7 @@ type IMessage interface {
 }
 
 // NewMessageQueue ...
-func NewMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
+func NewMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
 	dsn, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err

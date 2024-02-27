@@ -24,7 +24,7 @@ type KafkaMessageQueue struct {
 }
 
 // NewKafkaMessageQueue new message queue
-func NewKafkaMessageQueue(conf config.AccessPoint) (IMessageQueue, error) {
+func NewKafkaMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
 	var err error
 	var config *KafkaConfig
 
