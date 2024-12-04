@@ -17,7 +17,6 @@ type DataValue interface {
 }
 
 func NewDataStream(mq MessageQueue, dataptr DataValue) *DataStream {
-
 	return &DataStream{
 		mq:    mq,
 		data:  dataptr,
@@ -34,13 +33,11 @@ func (ds *DataStream) SendMessage(data DataValue, opts ...SendMsgOption) error {
 }
 
 func (ds *DataStream) Consume(opts ...ConsumeMsgOption) error {
-
 	err := ds.mq.ConsumeMessage(ds.ConsumeMessageFunc, opts...)
 	return err
 }
 
 func (ds *DataStream) ConsumeMessageFunc(msg Message) {
-
 	var err error
 	newdata := reflect.New(ds.datat).Interface().(DataValue)
 	body := msg.Body()

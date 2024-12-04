@@ -2,7 +2,7 @@ package rdb
 
 import "gorm.io/gorm"
 
-// Session session rename
+// Session session rename.
 type Session = *gorm.DB
 
 // SesionMaker ....
@@ -17,9 +17,8 @@ type SessionFactory interface {
 	NewSession() Session
 }
 
-// NewSessionMaker new session maker
+// NewSessionMaker new session maker.
 func NewSessionMaker(ori Session, factory SessionFactory) (Session, *SesionMaker) {
-
 	var newsession Session
 	if ori == nil {
 		newsession = factory.NewSession()
@@ -32,7 +31,6 @@ func NewSessionMaker(ori Session, factory SessionFactory) (Session, *SesionMaker
 		factory:       factory,
 		newsession:    newsession,
 	}
-
 }
 
 // Close 关闭session
@@ -43,7 +41,6 @@ func NewSessionMaker(ori Session, factory SessionFactory) (Session, *SesionMaker
 	如果执行异常，需要rollback最后close
 */
 func (s *SesionMaker) Close(errp *error) error {
-
 	// 如果是上游传入的， 不做处理，直接返回
 	if s.originsession != nil {
 		return nil
@@ -59,7 +56,6 @@ func (s *SesionMaker) Close(errp *error) error {
 	if err2 != nil {
 		return err2
 	}
-	// s.newsession.Close()
 
 	return nil
 }

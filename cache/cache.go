@@ -8,7 +8,7 @@ import (
 	"github.com/mmtbak/microlibrary/config"
 )
 
-// Cache interface
+// Cache interface.
 type Cache interface {
 	// set 填入key/value
 	Set(key, value []byte, expiration time.Duration) error
@@ -20,7 +20,7 @@ type Cache interface {
 	Active(key []byte, expiration time.Duration) error
 }
 
-// NewCache new cache
+// NewCache new cache.
 func NewCache(conf config.AccessPoint) (Cache, error) {
 	dsn, err := conf.Decode(nil)
 	if err != nil {

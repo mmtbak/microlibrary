@@ -12,11 +12,11 @@ import (
 var configParseFuncs = make(map[string]configParseFunc)
 
 var (
-	// default = 9
+	// default = 9.
 	numOfPartition = 9
-	// default = 3
+	// default = 3.
 	numOfReplica = 3
-	// default 1s
+	// default 1s.
 	autoCommitSecond = 1
 )
 
@@ -24,7 +24,7 @@ func init() {
 	initconfigParsemap()
 }
 
-// KafkaConfig @Description:
+// KafkaConfig @Description:.
 type KafkaConfig struct {
 	Topics           []string // @Description: 接受消息的topic
 	ConsumerGroup    string   // @Description: 消费者组名称
@@ -87,7 +87,6 @@ func (c *KafkaConfig) GenConfig() *sarama.Config {
 	sconfig.Consumer.Offsets.AutoCommit.Enable = true
 	sconfig.Consumer.Offsets.AutoCommit.Interval = time.Duration(c.AutoCommitSecond * int(time.Second))
 	return sconfig
-
 }
 
 func parseBasicConfig(m map[string]configParseFunc) {
@@ -113,14 +112,14 @@ func parseBasicConfig(m map[string]configParseFunc) {
 		config.NumOfReplica, err = strconv.Atoi(val)
 		return err
 	}
-	m["inital"] = func(config *KafkaConfig, val string) error {
+	m["initial"] = func(config *KafkaConfig, val string) error {
 		var err error
 		if val == "newest" {
 			config.Initial = sarama.OffsetNewest
 		} else if val == "oldest" {
 			config.Initial = sarama.OffsetOldest
 		} else {
-			err = errors.New("inital must be newest or oldest")
+			err = errors.New("initial must be newest or oldest")
 		}
 		return err
 	}
@@ -134,5 +133,4 @@ func parseBasicConfig(m map[string]configParseFunc) {
 		config.BufferSize, err = strconv.Atoi(val)
 		return err
 	}
-
 }

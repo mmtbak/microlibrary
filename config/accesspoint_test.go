@@ -6,14 +6,13 @@ import (
 )
 
 func TestAccessPoint(t *testing.T) {
-
 	testcases := []struct {
 		data  AccessPoint
 		param interface{}
 	}{
 		{
 			data: AccessPoint{
-				Source: "mysql://root:password@tcp(128.0.0.1:3306)/mydb_test?charset=utf8&parseTime=true&loc=Local",
+				Source: "mysql://root:password@tcp(127.0.0.1:3306)/mydb_test?charset=utf8&parseTime=true&loc=Local",
 				Options: map[string]interface{}{
 					"maxopenconn": 1000,
 					"maxidleconn": 1000,
@@ -38,6 +37,5 @@ func TestAccessPoint(t *testing.T) {
 		fmt.Println("dsn: ", dsn)
 		fmt.Println("dsn.source : ", dsn.Source)
 		fmt.Println("option: ", testcase.param)
-
 	}
 }

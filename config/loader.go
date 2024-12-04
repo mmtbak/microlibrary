@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ConfigLoader 配置中心load接口类的定义
+// ConfigLoader 配置中心load接口类的定义.
 type ConfigLoader interface {
 	// loadtype
 	Type() string
@@ -13,10 +13,10 @@ type ConfigLoader interface {
 	Load(val interface{}) error
 }
 
-// TypeCodec 编码格式
+// TypeCodec 编码格式.
 type TypeCodec string
 
-// Codecs common codec type
+// Codecs common codec type.
 var Codecs = struct {
 	YAML TypeCodec
 	JSON TypeCodec
@@ -32,9 +32,8 @@ const (
 	Nacostype = "nacos"
 )
 
-// NewConfigLoader  创建一个configloader
+// NewConfigLoader  创建一个configloader.
 func NewConfigLoader(dsn string) (ConfigLoader, error) {
-
 	var err error
 	schemes := strings.SplitN(dsn, "+", 2)
 	scheme := schemes[0]

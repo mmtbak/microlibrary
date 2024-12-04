@@ -27,4 +27,4 @@ linters:
 issues:
   new: true
   exclude-use-default: false
-
+  fix: false

@@ -11,19 +11,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// KafkaMessageQueue  kafka实现的队列
+// KafkaMessageQueue  kafka实现的队列.
 type KafkaMessageQueue struct {
-	access       config.AccessPoint
-	config       *KafkaConfig
-	dsndata      config.DSN
-	hosts        []string
-	topics       []string
-	producer     sarama.SyncProducer
-	producerOnce sync.Once
-	consumer     sarama.ConsumerGroup
+	access   config.AccessPoint
+	config   *KafkaConfig
+	dsndata  config.DSN
+	hosts    []string
+	topics   []string
+	producer sarama.SyncProducer
+	consumer sarama.ConsumerGroup
 }
 
-// NewKafkaMessageQueue new message queue
+// NewKafkaMessageQueue new message queue.
 func NewKafkaMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
 	var err error
 	var config *KafkaConfig
@@ -71,7 +70,7 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
 	return &kafkamq, nil
 }
 
-// CreateTopics create topics
+// CreateTopics create topics.
 func (mq *KafkaMessageQueue) CreateTopics() error {
 	var err error
 	for _, t := range mq.topics {
@@ -84,7 +83,7 @@ func (mq *KafkaMessageQueue) CreateTopics() error {
 }
 
 // CreateTopic  create topic if not exist
-// param topic name
+// param topic name.
 func (mq *KafkaMessageQueue) CreateTopic(topic string) error {
 	// Set broker configuration
 	var err error
@@ -118,19 +117,26 @@ func (mq *KafkaMessageQueue) CreateTopic(topic string) error {
 	return nil
 }
 
-// SyncSchema implements create topics
+// SyncSchema implements create topics.
 func (mq *KafkaMessageQueue) SyncSchema() error {
 	return mq.CreateTopics()
 }
 
 func (mq *KafkaMessageQueue) getProducer() (sarama.SyncProducer, error) {
+	if mq.producer == nil {
+		producer, err := mq.newProducer()
+		return producer, err
+	}
+	return mq.producer, nil
+}
+
+func (mq *KafkaMessageQueue) newProducer() (sarama.SyncProducer, error) {
 	var err error
-	mq.producerOnce.Do(func() {
-		prodconfig := mq.config.GenConfig()
-		mq.producer, err = sarama.NewSyncProducer(mq.hosts, prodconfig)
-	})
+	prodconfig := mq.config.GenConfig()
+	mq.producer, err = sarama.NewSyncProducer(mq.hosts, prodconfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "new producer failed")
+		err = errors.Wrap(err, "new producer failed")
+		return nil, err
 	}
 	return mq.producer, nil
 }
@@ -163,7 +169,7 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 	return consumer, err
 }
 
-// SendMessage implements
+// SendMessage implements.
 func (mq *KafkaMessageQueue) SendMessage(msg []byte, opts ...SendMsgOption) error {
 	opt := MergeSendMsgOptions(opts)
 	producer, err := mq.getProducer()
@@ -184,7 +190,7 @@ func (mq *KafkaMessageQueue) SendMessage(msg []byte, opts ...SendMsgOption) erro
 	return err
 }
 
-// ConsumeMessage start consume block , support reconnect, still waiting for user to cancel
+// ConsumeMessage start consume block , support reconnect, still waiting for user to cancel.
 func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...ConsumeMsgOption) error {
 	opt := MergeConsumeMsgOptions(opts)
 	if cb == nil {
@@ -195,7 +201,7 @@ func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...Consu
 		return err
 	}
 	// pool func
-	var pf = func(i interface{}) {
+	pf := func(i interface{}) {
 		msg, ok := i.(*KafkaMessage)
 		if !ok {
 			return
@@ -239,53 +245,53 @@ func (mq *KafkaMessageQueue) ConsumeMessage(cb ConsumeMessageFunc, opts ...Consu
 	return err
 }
 
-// Close mq
+// Close mq.
 func (mq *KafkaMessageQueue) Close() error {
 	return nil
 }
 
-// KafkaMessage message
+// KafkaMessage message.
 type KafkaMessage struct {
 	session sarama.ConsumerGroupSession
 	msg     *sarama.ConsumerMessage
 	body    []byte
 }
 
-// Body msg context
+// Body msg context.
 func (msg *KafkaMessage) Body() []byte {
 	return msg.body
 }
 
-// ID partition offset
+// ID partition offset.
 func (msg *KafkaMessage) ID() string {
 	return fmt.Sprintf("partition-%d,offset-%d", msg.msg.Partition, msg.msg.Offset)
 }
 
-// Ack reply ack
+// Ack reply ack.
 func (msg *KafkaMessage) Ack() error {
 	msg.session.MarkMessage(msg.msg, "")
 	return nil
 }
 
-// Nack no ack
+// Nack no ack.
 func (msg *KafkaMessage) Nack() error {
 	return nil
 }
 
-// kafkaConsumerGroupHandler consume interface
+// kafkaConsumerGroupHandler consume interface.
 type kafkaConsumerGroupHandler struct {
 	pool   *ants.PoolWithFunc
 	option ConsumeMsgOption
 }
 
-// Setup is run at the beginning of a new session, before ConsumeClaim
+// Setup is run at the beginning of a new session, before ConsumeClaim.
 func (h *kafkaConsumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
 	// Mark the consumer as ready
 	fmt.Println("kafka setup", session.Claims())
 	return nil
 }
 
-// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
+// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited.
 func (h *kafkaConsumerGroupHandler) Cleanup(session sarama.ConsumerGroupSession) error {
 	fmt.Println("kafka cleanup", session.Claims())
 	return nil
@@ -293,7 +299,8 @@ func (h *kafkaConsumerGroupHandler) Cleanup(session sarama.ConsumerGroupSession)
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
-	claim sarama.ConsumerGroupClaim) error {
+	claim sarama.ConsumerGroupClaim,
+) error {
 	// NOTE:
 	// Do not move the code below to a goroutine.
 	// The `ConsumeClaim` itself is called within a goroutine, see:
@@ -302,7 +309,7 @@ func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSes
 	for {
 		select {
 		case message := <-msgchan:
-			//log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s",
+			// log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s",
 			//	string(message.Value), message.Timestamp, message.Topic)
 			msg := KafkaMessage{
 				session: session,
@@ -319,6 +326,5 @@ func (h *kafkaConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSes
 		case <-session.Context().Done():
 			return nil
 		}
-
 	}
 }

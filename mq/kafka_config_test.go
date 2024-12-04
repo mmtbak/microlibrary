@@ -1,16 +1,15 @@
 package mq
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/IBM/sarama"
+	"gopkg.in/go-playground/assert.v1"
 )
 
-func TestKafkaConfig(t *testing.T) {
-
+func TestParseKafkaConfig(t *testing.T) {
 	data := map[string]string{
-		"inital":        "oldest",
+		"initial":       "oldest",
 		"version":       "2.8.1",
 		"topics":        "my-event",
 		"consumergroup": "mygroup",
@@ -18,14 +17,17 @@ func TestKafkaConfig(t *testing.T) {
 		// "version": "1.1.1",
 	}
 	cfg, err := ParseKafkaConfig(data)
-	if err != nil {
-		t.Error(err)
-		return
+	assert.Equal(t, err, nil)
+	exceptconfig := &KafkaConfig{
+		NumOfPartition:   3,
+		NumOfReplica:     2,
+		AutoCommitSecond: 1,
+		BufferSize:       1024,
+		Initial:          sarama.OffsetOldest,
+		Version:          sarama.V2_8_1_0,
+		Topics:           []string{"my-event"},
+		ConsumerGroup:    "mygroup",
+		ClientID:         "microlib-client",
 	}
-	fmt.Println(cfg)
-	if cfg.Version != sarama.V2_8_1_0 {
-		t.Error("version not match")
-		return
-	}
-
+	assert.Equal(t, cfg, exceptconfig)
 }

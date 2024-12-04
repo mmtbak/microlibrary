@@ -1,14 +1,18 @@
 package mq
 
 import (
-	"fmt"
 	"testing"
 	"time"
+
+	"gopkg.in/go-playground/assert.v1"
 )
 
 func TestSendMsgOption(t *testing.T) {
-
-	opt := NewSendMsgOption().WithKey("abc").WithSendtime(time.Now())
-
-	fmt.Println(opt)
+	sendtime := time.Now()
+	opt := NewSendMsgOption().WithKey("abc").WithSendtime(sendtime)
+	exceptoption := &SendMsgOption{
+		Key:      "abc",
+		Sendtime: sendtime,
+	}
+	assert.Equal(t, opt, exceptoption)
 }

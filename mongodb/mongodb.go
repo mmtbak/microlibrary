@@ -8,7 +8,7 @@ import (
 	"github.com/qiniu/qmgo"
 )
 
-// MongoClient mongodb client
+// MongoClient mongodb client.
 type MongoClient struct {
 	conn     *qmgo.QmgoClient
 	config   config.AccessPoint
@@ -16,9 +16,8 @@ type MongoClient struct {
 	Database string
 }
 
-// NewMongoClient Create DBEngine instance
+// NewMongoClient Create DBEngine instance.
 func NewMongoClient(conf config.AccessPoint) (*MongoClient, error) {
-
 	dsn, err := conf.Decode(nil)
 	if err != nil {
 		return nil, err
@@ -38,17 +37,17 @@ func NewMongoClient(conf config.AccessPoint) (*MongoClient, error) {
 	return clt, nil
 }
 
-// SetLogger set logger
+// SetLogger set logger.
 func (client *MongoClient) SetLogger(logger log.Logger) {
 	client.logger = logger
 }
 
-// Conn return connection
+// Conn return connection.
 func (client *MongoClient) Conn() *qmgo.QmgoClient {
 	return client.conn
 }
 
-// DB return db
+// DB return db.
 func (client *MongoClient) DB() *qmgo.Database {
 	return client.conn.Client.Database(client.Database)
 }

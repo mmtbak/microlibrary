@@ -1,18 +1,18 @@
 module github.com/mmtbak/microlibrary
 
-go 1.18
+go 1.21
 
 replace github.com/kos-v/dsnparser => github.com/mmtbak/dsnparser v0.0.0-20240220012319-a0bde160948e
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/IBM/sarama v1.40.1
 	github.com/InVisionApp/go-logger v1.0.1
 	github.com/coocood/freecache v1.2.4
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/kos-v/dsnparser v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/olivere/elastic/v7 v7.0.32
 	github.com/panjf2000/ants/v2 v2.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/qiniu/qmgo v1.1.8
@@ -51,10 +51,8 @@ require (
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
-	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/onsi/gomega v1.24.2 // indirect
 	github.com/paulmach/orb v0.10.0 // indirect
