@@ -7,7 +7,6 @@ import (
 )
 
 func TestConfigParser(t *testing.T) {
-
 	var testcases = []struct {
 		source    string
 		protocol  string
@@ -19,30 +18,35 @@ func TestConfigParser(t *testing.T) {
 			protocol:  "file",
 		},
 		{
-			source:   "file://config.yaml",
-			protocol: "file",
+			source:    "file://config.yaml",
+			wantError: false,
+			protocol:  "file",
 		},
 		{
-			source:   "file:///etc/config.toml",
-			protocol: "file",
+			source:    "file:///etc/config.toml",
+			wantError: false,
+			protocol:  "file",
 		},
 		{
-			source:   "file://config.json",
-			protocol: "file",
+			source:    "file://config.json",
+			wantError: false,
+			protocol:  "file",
 		},
 		{
-			source:   "nacos://127.0.0.1:9000/",
-			protocol: "nacos",
+			source:    "nacos://127.0.0.1:9000/",
+			wantError: false,
+			protocol:  "nacos",
 		},
 	}
 
 	for _, tt := range testcases {
-		_, err := NewConfigLoader(tt.source)
-		assert.Equal(t, err != nil, tt.wantError)
-		if err != nil {
-			continue
-		}
-
+		t.Run(tt.source, func(t *testing.T) {
+			conf, err := NewConfigLoader(tt.source)
+			assert.Equal(t, err == nil, tt.wantError)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, conf.Type(), tt.protocol)
+		})
 	}
-
 }

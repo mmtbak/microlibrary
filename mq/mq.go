@@ -6,10 +6,10 @@ import (
 	"github.com/mmtbak/microlibrary/config"
 )
 
-// ConsumeMessageFunc 处理消息方法，默认不应答ack
+// ConsumeMessageFunc 处理消息方法，默认不应答ack.
 type ConsumeMessageFunc func(Message)
 
-// MessageQueue  消息队列接口规范
+// MessageQueue  消息队列接口规范.
 type MessageQueue interface {
 	// SyncSchema create topic
 	SyncSchema() error
@@ -21,7 +21,7 @@ type MessageQueue interface {
 	Close() error
 }
 
-// Message   message content interface
+// Message   message content interface.
 type Message interface {
 	ID() string
 	Body() []byte

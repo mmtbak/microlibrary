@@ -1,42 +1,69 @@
 package rdb
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"gopkg.in/go-playground/assert.v1"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-type MockFactory struct{}
-
-func (f MockFactory) NewSession() Session {
-	return nil
+type MockFactory struct {
+	client *DBClient
 }
 
-func CreateError() (int, error) {
-	return 10, fmt.Errorf("create error ")
+func (f MockFactory) NewSession() Session {
+	return f.client.NewSession()
+}
+
+type MockTable struct {
+	ID   int `gorm:"primaryKey"`
+	Name string
+	Age  int
 }
 
 func TestSession(t *testing.T) {
-
 	var err error
-	factory := MockFactory{}
-	newss, maker := NewSessionMaker(nil, factory)
+	db, mock, err := sqlmock.New()
+	assert.Equal(t, err, nil)
+	// mock statement
+	// mock sql "select version()"
+	mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO `mock_tables`").WillReturnResult(sqlmock.NewResult(10, 1))
+	mock.ExpectExec("UPDATE `mock_tables`").WithArgs("bob", 20, 10).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	// mock end statement
+	gormdb, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: db,
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	assert.Equal(t, err, nil)
+
+	client := &DBClient{
+		conn: gormdb,
+	}
+	factory := MockFactory{
+		client: client,
+	}
+	tx, maker := NewSessionMaker(nil, factory)
 	defer maker.Close(&err)
-	err = fmt.Errorf("err1")
-	fmt.Printf("err : %s,  p: %p \n", err, &err)
-	fmt.Println(newss)
-	err = fmt.Errorf("err2 ")
-	fmt.Printf("err : %s,  p: %p \n", err, &err)
-	id, err := CreateError()
-	fmt.Printf("id : %d , err : %s  p : %p \n", id, err, &err)
-	// err = fmt.Errorf("err3 ")
-	// fmt.Printf("err : %s,  p: %p \n", err, &err)
-}
-
-func TestSessionNil(t *testing.T) {
-
-	// var err error
-	factory := MockFactory{}
-	_, maker := NewSessionMaker(nil, factory)
-	// defer maker.Close(&err)
-	defer maker.Close(nil)
+	newdata := &MockTable{
+		Name: "alice",
+		Age:  18,
+	}
+	tx = tx.Create(newdata)
+	err = tx.Error
+	assert.Equal(t, err, nil)
+	updateitem := &MockTable{
+		Name: "bob",
+		Age:  20,
+	}
+	tx = tx.Model(&MockTable{}).Where(&MockTable{ID: newdata.ID}).Updates(updateitem)
+	err = tx.Error
+	assert.Equal(t, err, nil)
+	tx.Commit()
 }

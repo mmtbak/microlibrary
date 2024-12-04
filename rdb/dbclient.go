@@ -3,15 +3,11 @@ package rdb
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/mmtbak/microlibrary/config"
-
 	_ "github.com/go-sql-driver/mysql" // mysql driver
+	"github.com/mmtbak/microlibrary/config"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -26,97 +22,181 @@ var schemas = struct {
 	Clickhouse: "clickhouse",
 }
 
-// DBClient Gorm的数据库连接
+// DBClient Gorm的数据库连接.
 type DBClient struct {
-	schmea   string
-	database string
-	conn     *gorm.DB
-	conf     config.AccessPoint
-	options  DBClientOptions
+	conn   *gorm.DB
+	config *Config
 }
 
-// DBClientOptions dbclient 配置选项
+// Config DBClient配置.
+type Config struct {
+	Scheme      string
+	Source      string
+	MaxOpenConn int
+	MaxIdleConn int
+	MaxIdleTime time.Duration
+	LogLevel    logger.LogLevel
+	Cluster     string
+}
+
+// DBClientOptions dbclient 配置选项.
 type DBClientOptions struct {
 	MaxOpenConn int
 	MaxIdleConn int
 	MaxIdleTime string
-	SQLLevel    string
+	LogLevel    string
 	Cluster     string
 }
 
-// LogLevelMap log level for config string
+var defaultDBClientOptions = DBClientOptions{
+	MaxOpenConn: 100,
+	MaxIdleConn: 100,
+	MaxIdleTime: "",
+	LogLevel:    "info",
+}
+
+// LogLevelMap log level for config string.
 var LogLevelMap = map[string]logger.LogLevel{
+	"warn":   logger.Warn,
 	"info":   logger.Info,
 	"error":  logger.Error,
 	"silent": logger.Silent,
 }
 
-// NewDBClient Create DBEngine instance
-func NewDBClient(conf config.AccessPoint, opts ...gorm.Option) (*DBClient, error) {
+// ParseConfig Parse config from accesspoint.
+func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
 
-	var conn *gorm.DB
-	var err error
+	clientoption := defaultDBClientOptions
+	config = &Config{}
 
-	op := DBClientOptions{
-		MaxOpenConn: 100,
-		MaxIdleConn: 100,
-	}
-
-	dsn, err := conf.Decode(&op)
+	dsn, err := conf.Decode(&clientoption)
 	if err != nil {
 		return nil, err
 	}
 	dsn.Scheme = strings.ToLower(dsn.Scheme)
 
+	// 设置日志级别
+
+	loglevel, ok := LogLevelMap[clientoption.LogLevel]
+	if !ok {
+		err = fmt.Errorf("unsupported loglevel : [ %s ]", clientoption.LogLevel)
+		return
+	}
+	// detect db type
 	switch dsn.Scheme {
 	case schemas.MySQL:
-		conn, err = gorm.Open(mysql.Open(dsn.Source), opts...)
+		if !strings.Contains(dsn.Source, "charset") {
+			dsn.Source += "&charset=utf8&parseTime=true&loc=Local"
+		}
 	case schemas.Clickhouse:
-		conn, err = gorm.Open(clickhouse.Open(conf.Source), opts...)
+		if !strings.Contains(dsn.Source, "read_timeout") {
+			dsn.Source += "&read_timeout=10s"
+		}
+		if !strings.Contains(dsn.Source, "dial_timeout") {
+			dsn.Source += "&dial_timeout=10s"
+		}
 	default:
-		return nil, fmt.Errorf("no database type : [%s]", dsn.Scheme)
+		err = fmt.Errorf("unsupported database type : [ %s ]", dsn.Scheme)
+		return
 	}
-	if err != nil {
-		return nil, err
-	}
-	dbname := dsn.Path
 
-	client := &DBClient{
-		schmea:   dsn.Scheme,
-		database: dbname,
-		conn:     conn,
-		conf:     conf,
-		options:  op,
+	config = &Config{
+		Scheme:      dsn.Scheme,
+		Source:      dsn.Source,
+		LogLevel:    loglevel,
+		MaxOpenConn: clientoption.MaxOpenConn,
+		MaxIdleConn: clientoption.MaxIdleConn,
+		Cluster:     clientoption.Cluster,
 	}
-	err = client.ConfigOptions(op)
+
+	if clientoption.MaxIdleTime != "" {
+		maxidletime, err := time.ParseDuration(clientoption.MaxIdleTime)
+		if err != nil {
+			return nil, err
+		}
+		config.MaxIdleTime = maxidletime
+	}
+	return config, nil
+}
+
+// Open Open database connection.
+func Open(config *Config) (conn *gorm.DB, err error) {
+
+	// 设置日志级别
+	sqllogger := logger.Default
+	sqllogger.LogMode(config.LogLevel)
+
+	gormoption := &gorm.Config{
+		Logger: sqllogger,
+	}
+
+	switch config.Scheme {
+	case schemas.MySQL:
+		conn, err = gorm.Open(mysql.Open(config.Source), gormoption)
+	case schemas.Clickhouse:
+		conn, err = gorm.Open(clickhouse.Open(config.Source), gormoption)
+	default:
+		err = fmt.Errorf("unsupported database type : [ %s ]", config.Scheme)
+		return
+	}
 	if err != nil {
 		return nil, err
+	}
+
+	db, err := conn.DB()
+	if err != nil {
+		return
+	}
+
+	// 设置连接池
+	if config.MaxIdleTime > 0 {
+		db.SetConnMaxIdleTime(config.MaxIdleTime)
+	}
+	if config.MaxIdleConn > 0 {
+		db.SetMaxIdleConns(config.MaxIdleConn)
+	}
+	if config.MaxOpenConn > 0 {
+		db.SetMaxOpenConns(config.MaxOpenConn)
+	}
+
+	return conn, nil
+}
+
+// NewDBClient Create DBEngine instance.
+func NewDBClient(config *Config) (*DBClient, error) {
+
+	conn, err := Open(config)
+	if err != nil {
+		return nil, err
+	}
+	client := &DBClient{
+		conn:   conn,
+		config: config,
 	}
 	return client, nil
 }
 
-// Session Session
-func (client *DBClient) Session() *gorm.DB {
-	return client.conn.Session(&gorm.Session{})
-}
-
-// NewSession Session
-func (client *DBClient) NewSession() *gorm.DB {
-	return client.conn.Begin()
-}
-
-// DB DB
+// DB DB.
 func (client *DBClient) DB() *gorm.DB {
 	return client.conn
 }
 
-// SyncTables sync tables defined in  table object
-func (client *DBClient) SyncTables(tables []interface{}) error {
+// Session Session.
+func (client *DBClient) Session() *gorm.DB {
+	return client.conn.Session(&gorm.Session{})
+}
 
+// NewSession Session.
+func (client *DBClient) NewSession() *gorm.DB {
+	return client.conn.Begin()
+}
+
+// SyncTables sync tables defined in  table object.
+func (client *DBClient) SyncTables(tables []interface{}) error {
 	var err error
-	var dbop = DataBaseOption{
-		Cluster: client.options.Cluster,
-		DBName:  client.database,
+	dbop := DataBaseOption{
+		Cluster:      client.config.Cluster,
+		DatabaseName: client.conn.Migrator().CurrentDatabase(),
 	}
 	for _, table := range tables {
 		tx, maker := NewSessionMaker(nil, client)
@@ -124,19 +204,19 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 		var opt TableOption
 
 		// 如果DB是clickhouse ， 则尝试解析clickhouse tableoption
-		if client.schmea == schemas.Clickhouse {
+		if client.config.Scheme == schemas.Clickhouse {
 			// 发现确实有clickhouse的tableoption，则解析tableoption
 			if cktable, ok := table.(ClickhouseTable); ok {
 				opt = cktable.ClickhouseTableOption(dbop)
 				if opt.TableOptions != "" {
 					tx = tx.Set("gorm:table_options", opt.TableOptions)
 				}
-				if opt.ClusterOptions != "" {
-					tx = tx.Set("gorm:table_cluster_options", opt.ClusterOptions)
+				if opt.TableClusterOptions != "" {
+					tx = tx.Set("gorm:table_cluster_options", opt.TableClusterOptions)
 				}
 			}
 			// 如果DB是mysql ，则尝试解析mysql tableoption
-		} else if client.schmea == schemas.MySQL {
+		} else if client.config.Scheme == schemas.MySQL {
 			// 发现确实db是mysql，则解析tableoption
 			if mytable, ok := table.(MySQLTable); ok {
 				opt = mytable.MySQLTableOption(dbop)
@@ -153,7 +233,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 	return nil
 }
 
-// StartMonitor Monitor DBState
+// StartMonitor Monitor DBState.
 func (model *DBClient) StartMonitor() {
 	db, err := model.conn.DB()
 	if err != nil {
@@ -170,39 +250,4 @@ func (model *DBClient) StartMonitor() {
 		)
 		model.conn.Logger.Info(context.Background(), msg)
 	}
-}
-
-// SetLogger set logger
-func (c *DBClient) SetLogger(writer io.Writer, config *logger.Config) {
-	if config == nil {
-		config = &logger.Config{
-			SlowThreshold:             3 * time.Second, // 慢 SQL 阈值
-			LogLevel:                  logger.Error,    // 日志级别
-			IgnoreRecordNotFoundError: true,            // 忽略ErrRecordNotFound（记录未找到）错误
-			Colorful:                  false,           // 禁用彩色打印
-		}
-		l, ok := LogLevelMap[c.options.SQLLevel]
-		if ok {
-			config.LogLevel = l
-		}
-
-	}
-	newLogger := logger.New(
-		log.New(writer, "gorm", log.LstdFlags), // io writer（日志输出的目标，前缀和日志包含的内容——译者注）
-		*config,
-	)
-	c.conn.Config.Logger = newLogger
-}
-
-// ConfigOptions Config client options
-// support key in dbclientoptions
-func (c *DBClient) ConfigOptions(options DBClientOptions) error {
-	db, err := c.conn.DB()
-	if err != nil {
-		return err
-	}
-	db.SetMaxOpenConns(options.MaxOpenConn)
-	db.SetMaxIdleConns(options.MaxIdleConn)
-	c.SetLogger(os.Stdout, nil)
-	return nil
 }

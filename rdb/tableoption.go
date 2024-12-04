@@ -9,65 +9,69 @@ import (
 )
 
 type DataBaseOption struct {
-	Cluster string
-	DBName  string
+	Cluster      string
+	DatabaseName string
 }
 
-type ClickhouseTable interface {
-	ClickhouseTableOption(option DataBaseOption) TableOption
+// TableOption table option.
+type TableOption struct {
+	TableOptions string
+	// TableClusterOptions for clickhouse distributed table.
+	TableClusterOptions string
 }
+
+// MySQLTable mysql table interface.
 type MySQLTable interface {
 	MySQLTableOption(option DataBaseOption) TableOption
 }
 
-type TableOption struct {
-	TableOptions   string
-	ClusterOptions string
+// DefaultMySQLTable default mysql table field.
+type DefaultMySQLTable struct{}
+
+// MySQLTableOption  gorm mysql option.
+func (table DefaultMySQLTable) MySQLTableOption(_ string) TableOption {
+	return TableOption{
+		TableOptions: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+	}
 }
 
-// DefaultClickHouseTable  默认clickhouse表
+// ClickhouseTable clickhouse table interface.
+type ClickhouseTable interface {
+	ClickhouseTableOption(option DataBaseOption) TableOption
+}
+
+// DefaultClickHouseTable  默认clickhouse表.
 type DefaultClickHouseTable struct {
 	// 采集时间
 	Time time.Time `json:"time" gorm:"comment:时序时间"`
 }
 
-// TableOptionsClickHouse  gorm
+// ClickhouseTableOption  gorm.
 func (table DefaultClickHouseTable) ClickhouseTableOption(dbop DataBaseOption) TableOption {
 	top := TableOption{
 		TableOptions: "ENGINE=MergeTree ORDER BY time PARTITION BY toYYYYMMDD(time)",
 	}
 	if dbop.Cluster != "" {
-		top.ClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
+		top.TableClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
 	}
 	return top
 }
 
-// DefaultClickHouseDistributedTable
+// DefaultClickHouseDistributedTable default clickhouse table field.
 type DefaultClickHouseDistributedTable struct {
 	// 采集时间
 	Time time.Time `json:"time"  gorm:"comment:时序时间"`
 }
 
-// TableOptionsClickHouse 配置Clickhouse的创建options
+// ClickhouseTableOption 配置Clickhouse的创建options.
 func (table DefaultClickHouseDistributedTable) ClickhouseTableOption(dbop DataBaseOption) TableOption {
 	item := new(DefaultClickHouseTable)
 	table_name := schema.NamingStrategy{}.TableName(reflect.TypeOf(item).Elem().Name())
 	top := TableOption{
-		TableOptions: fmt.Sprintf("ENGINE=Distributed(%s, %s, %s, rand()", dbop.Cluster, dbop.DBName, table_name),
+		TableOptions: fmt.Sprintf("ENGINE=Distributed(%s, %s, %s, rand()", dbop.Cluster, dbop.DatabaseName, table_name),
 	}
 	if dbop.Cluster != "" {
-		top.ClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
+		top.TableClusterOptions = fmt.Sprintf("on cluster %s", dbop.Cluster)
 	}
 	return top
-}
-
-type DefaultMySQLTable struct {
-}
-
-// MySQLTableOptions  gorm mysql option
-func (table DefaultMySQLTable) MySQLTableOption(dbname string) TableOption {
-
-	return TableOption{
-		TableOptions: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-	}
 }

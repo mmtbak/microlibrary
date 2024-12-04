@@ -11,16 +11,16 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-// BulkWriter 批量处理器
+// BulkWriter 批量处理器.
 type BulkWriter[T any] struct {
 	mu          sync.Mutex
 	buffer      []T           // buffer 数据缓存
 	msglimit    int           // 批处理消息数量上限
 	tick        time.Duration // 批处理定时时间长度
 	WriteFunc   func([]T)     // 回调批量处理函数 ，批量处理器
-	writerlimit int           //最大writer数量
+	writerlimit int           // 最大writer数量
 	ticker      *time.Ticker
-	bufferFull  chan interface{} //buffer满的信号量
+	bufferFull  chan interface{} // buffer满的信号量
 	// 条件变量
 	cond *sync.Cond
 
@@ -39,7 +39,7 @@ type BulkWriter[T any] struct {
 // NewBulkWriter 创建一个批量处理缓存器， 当缓存器缓存的消息数量达到 limit 或者时间达到tick之后，触发一个批次处理函数writerfunc,清理缓存数据.
 // @limit 批处理消息数量上限
 // @tick 批处理缓存定时时间长度
-// @writerfunc 批量处理函数
+// @writerfunc 批量处理函数.
 func NewBulkWriter[T any](limit int, tick time.Duration, writefunc func([]T)) *BulkWriter[T] {
 	writer := BulkWriter[T]{
 		msglimit:   limit,
@@ -70,31 +70,17 @@ func NewBulkWriter[T any](limit int, tick time.Duration, writefunc func([]T)) *B
 		}
 	}()
 
-	// // 监控函数
-	// go func() {
-	// 	for writer.logger != nil {
-	// 		time.Sleep(10 * time.Second)
-	// 		msg := fmt.Sprintf(`Type name: %v, buffer size: %v, queue size: %v, item size: %v, waiting worker size: %v,
-	// 		queue size period: %v, item size period: %v, waiting worker size period: %v.\n`,
-	// 			reflect.TypeOf(new(T)).Elem().Name(), len(writer.buffer), writer.queueSize, writer.itemSize,
-	// 			writer.waitingWorkerSize,
-	// 			writer.queueSizePeriod, writer.itemSizePeriod, writer.waitingWorkerSizePeriod)
-	// 		writer.logger.Info(msg)
-	// 		writer.resetPeriod()
-	// 	}
-	// }()
-
 	return &writer
 }
 
-// WithWriterLimit set writer limit
+// WithWriterLimit set writer limit.
 func (w *BulkWriter[T]) WithWriterLimit(limit int) *BulkWriter[T] {
 	w.writerlimit = limit
 	w.pool, _ = ants.NewPoolWithFunc(limit, w.write, ants.WithNonblocking(false))
 	return w
 }
 
-// Flush 将已有buffer全部写回数据库，并发消息给Append函数：buffer已经刷清空
+// Flush 将已有buffer全部写回数据库，并发消息给Append函数：buffer已经刷清空.
 func (writer *BulkWriter[T]) Flush() {
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
@@ -110,13 +96,6 @@ func (writer *BulkWriter[T]) Flush() {
 		// 每次最多只读limit个，然后循环
 		for len(writer.buffer) > 0 {
 			readLen := min(len(writer.buffer), writer.msglimit)
-
-			// go func(buffer []T) {
-			// 	writer.addInsertQueueAndItemsSize(len(buffer))
-			// 	writer.WriteFunc(buffer)
-			// 	writer.subInsertQueueAndItemsSize(len(buffer))
-			// }(writer.buffer[:readLen])
-
 			writer.pool.Invoke(writer.buffer[:readLen])
 
 			writer.buffer = writer.buffer[readLen:]
@@ -129,7 +108,7 @@ func (writer *BulkWriter[T]) Flush() {
 	writer.ticker.Reset(writer.tick)
 }
 
-// write callback processfunc
+// write callback processfunc.
 func (w *BulkWriter[T]) write(i interface{}) {
 	data := i.([]T)
 	w.addInsertQueueAndItemsSize(len(data))
@@ -137,7 +116,7 @@ func (w *BulkWriter[T]) write(i interface{}) {
 	w.subInsertQueueAndItemsSize(len(data))
 }
 
-// Append Append
+// Append Append.
 func (writer *BulkWriter[T]) Append(values ...T) {
 	if len(values) == 0 {
 		return
@@ -173,7 +152,7 @@ func (writer *BulkWriter[T]) brocast() {
 	writer.cond.Broadcast()
 }
 
-// addInsertQueueAndItemsSize 加一些监控值
+// addInsertQueueAndItemsSize 加一些监控值.
 func (writer *BulkWriter[T]) addInsertQueueAndItemsSize(itemSize int) {
 	atomic.AddInt64(&writer.queueSize, 1)
 	atomic.AddInt64(&writer.queueSizePeriod, 1)
@@ -181,31 +160,31 @@ func (writer *BulkWriter[T]) addInsertQueueAndItemsSize(itemSize int) {
 	atomic.AddInt64(&writer.itemSizePeriod, int64(itemSize))
 }
 
-// subInsertQueueAndItemsSize 减一些监控值
+// subInsertQueueAndItemsSize 减一些监控值.
 func (writer *BulkWriter[T]) subInsertQueueAndItemsSize(itemSize int) {
 	atomic.AddInt64(&writer.queueSize, -1)
 	atomic.AddInt64(&writer.itemSize, -int64(itemSize))
 }
 
-// addwaitingWorkerSize 加一些监控值
+// addwaitingWorkerSize 加一些监控值.
 func (writer *BulkWriter[T]) addwaitingWorkerSize() {
 	atomic.AddInt64(&writer.waitingWorkerSize, 1)
 	atomic.AddInt64(&writer.waitingWorkerSizePeriod, 1)
 }
 
-// subwaitingWorkerSize 减一些监控值
+// subwaitingWorkerSize 减一些监控值.
 func (writer *BulkWriter[T]) subwaitingWorkerSize() {
 	atomic.AddInt64(&writer.waitingWorkerSize, -1)
 }
 
-// resetPeriod 重置reset
+// resetPeriod 重置reset.
 func (writer *BulkWriter[T]) resetPeriod() {
 	atomic.AddInt64(&writer.queueSizePeriod, -writer.queueSizePeriod)
 	atomic.AddInt64(&writer.itemSizePeriod, -writer.itemSizePeriod)
 	atomic.AddInt64(&writer.waitingWorkerSizePeriod, -writer.waitingWorkerSizePeriod)
 }
 
-// min min is the minimum value
+// min min is the minimum value.
 func min(x, y int) int {
 	if x < y {
 		return x

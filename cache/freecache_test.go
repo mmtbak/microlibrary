@@ -2,37 +2,32 @@ package cache
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/coocood/freecache"
 	"github.com/mmtbak/microlibrary/config"
+	"gopkg.in/go-playground/assert.v1"
 )
 
 func TestFreecache(t *testing.T) {
-	var conf = config.AccessPoint{
+	conf := config.AccessPoint{
 		Source: "freecache://localhost/?sizekb=1000",
 	}
-	expireduration := 1 * time.Hour
-	c, err := NewCache(conf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c, err := NewFreecache(conf)
+	assert.Equal(t, err, nil)
+	expireduration := 2 * time.Second
 	key := []byte("key1")
 	value := []byte("value1")
 	err = c.Set(key, value, expireduration)
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(4 * time.Second)
-	c.Active(key, expireduration)
-	time.Sleep(4 * time.Second)
+	assert.Equal(t, err, nil)
+	time.Sleep(1 * time.Second)
 	v, err := c.Get(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(v)
-	if bytes.Equal(v, value) == false {
-		t.Fatal("value not equal")
-	}
+	assert.Equal(t, err, nil)
+	assert.Equal(t, bytes.Equal(v, value), true)
+	c.Active(key, expireduration)
+	time.Sleep(2 * time.Second)
+	v, err = c.Get(key)
+	assert.Equal(t, err, freecache.ErrNotFound)
+	assert.Equal(t, bytes.Equal(v, value), false)
 }
