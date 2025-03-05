@@ -43,9 +43,8 @@ func TestSession(t *testing.T) {
 	})
 	assert.Equal(t, err, nil)
 
-	client := &DBClient{
-		conn: gormdb,
-	}
+	client := &DBClient{}
+	client = client.WithDB(gormdb)
 	factory := MockFactory{
 		client: client,
 	}

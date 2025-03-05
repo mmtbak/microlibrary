@@ -24,7 +24,7 @@ var schemas = struct {
 
 // DBClient Gorm的数据库连接.
 type DBClient struct {
-	conn   *gorm.DB
+	db     *gorm.DB
 	config *Config
 }
 
@@ -170,25 +170,36 @@ func NewDBClient(config *Config) (*DBClient, error) {
 		return nil, err
 	}
 	client := &DBClient{
-		conn:   conn,
+		db:     conn,
 		config: config,
 	}
 	return client, nil
 }
 
-// DB DB.
-func (client *DBClient) DB() *gorm.DB {
-	return client.conn
+// WithDB set client db connection
+func (client *DBClient) WithDB(db *gorm.DB) *DBClient {
+	client.db = db
+	return client
 }
 
-// Session Session.
+// DB DB.
+func (client *DBClient) DB() *gorm.DB {
+	return client.db
+}
+
+// Session Session.“
 func (client *DBClient) Session() *gorm.DB {
-	return client.conn.Session(&gorm.Session{})
+	return client.db.Session(&gorm.Session{})
 }
 
 // NewSession Session.
 func (client *DBClient) NewSession() *gorm.DB {
-	return client.conn.Begin()
+	return client.db.Begin()
+}
+
+// NewSessionMaker create a session maker.
+func (client *DBClient) NewSessionMaker(session Session) (Session, *SesionMaker) {
+	return NewSessionMaker(session, client)
 }
 
 // SyncTables sync tables defined in  table object.
@@ -196,7 +207,7 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 	var err error
 	dbop := DataBaseOption{
 		Cluster:      client.config.Cluster,
-		DatabaseName: client.conn.Migrator().CurrentDatabase(),
+		DatabaseName: client.db.Migrator().CurrentDatabase(),
 	}
 	for _, table := range tables {
 		tx, maker := NewSessionMaker(nil, client)
@@ -233,11 +244,16 @@ func (client *DBClient) SyncTables(tables []interface{}) error {
 	return nil
 }
 
+// DropTables drop  tables from  db.
+func (client *DBClient) DropTables(tables []any) error {
+	return client.DB().Migrator().DropTable(tables...)
+}
+
 // StartMonitor Monitor DBState.
 func (model *DBClient) StartMonitor() {
-	db, err := model.conn.DB()
+	db, err := model.db.DB()
 	if err != nil {
-		model.conn.Logger.Error(context.Background(), "failed model.conn.DB()")
+		model.db.Logger.Error(context.Background(), "failed model.conn.DB()")
 		return
 	}
 
@@ -248,6 +264,6 @@ func (model *DBClient) StartMonitor() {
 			stat.MaxOpenConnections, stat.OpenConnections, stat.Idle, stat.InUse, stat.WaitCount,
 			stat.WaitDuration.String(),
 		)
-		model.conn.Logger.Info(context.Background(), msg)
+		model.db.Logger.Info(context.Background(), msg)
 	}
 }
