@@ -187,19 +187,19 @@ func (client *DBClient) DB() *gorm.DB {
 	return client.db
 }
 
-// Session Session.“
+// Session create a new session.
 func (client *DBClient) Session() *gorm.DB {
 	return client.db.Session(&gorm.Session{})
 }
 
-// NewTx Session.
+// NewTx create a new transaction.
 func (client *DBClient) NewTx() *gorm.DB {
 	return client.db.Begin()
 }
 
-// NewSessionMaker create a session maker.
-func (client *DBClient) NewSessionMaker(session Tx) (Tx, *TxMaker) {
-	return NewTxMaker(session, client)
+// NewTxMaker create a tx maker.
+func (client *DBClient) NewTxMaker(tx Tx) (Tx, *TxMaker) {
+	return NewTxMaker(tx, client)
 }
 
 // SyncTables sync tables defined in  table object.

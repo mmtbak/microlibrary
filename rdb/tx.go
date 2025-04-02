@@ -65,19 +65,19 @@ if origin tx is nil, it means the tx is a new tx created by factory, we need to 
 if errp is nil, the transaction will be committed
 if errp is not nil, the transaction will be rolled back
 */
-func (s *TxMaker) Close(errp *error) error {
+func (maker *TxMaker) Close(errp *error) error {
 	// if origin tx is not nil, it means the tx is used by upper function, so we don't need to do anything
-	if s.origintx != nil {
+	if maker.origintx != nil {
 		return nil
 	}
 	// if newtx.ConnPool == nil, it means the tx is not a valid tx, we don't need to do anything
-	if s.newtx.ConnPool == nil {
+	if maker.newtx.ConnPool == nil {
 		return nil
 	}
 	// if err is nil, the transaction will be committed
 	if errp != nil && *errp == nil {
-		return s.newtx.Commit().Error
+		return maker.newtx.Commit().Error
 	}
 	// if errp is not nil, the transaction will be rolled back
-	return s.newtx.Rollback().Error
+	return maker.newtx.Rollback().Error
 }

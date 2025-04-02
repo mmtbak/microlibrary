@@ -17,7 +17,7 @@ type MockTable struct {
 	Age  int
 }
 
-func TestSession(t *testing.T) {
+func TestTx(t *testing.T) {
 	var err error
 	db, mock, err := sqlmock.New()
 	assert.Equal(t, err, nil)
