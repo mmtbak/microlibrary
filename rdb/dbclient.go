@@ -1,7 +1,7 @@
 package rdb
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -39,7 +39,7 @@ type Config struct {
 	Cluster     string
 }
 
-// DBClientOptions dbclient 配置选项.
+// DBClientOptions DBClient 配置选项.
 type DBClientOptions struct {
 	MaxOpenConn int
 	MaxIdleConn int
@@ -126,15 +126,15 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 	sqllogger := logger.Default
 	sqllogger.LogMode(config.LogLevel)
 
-	gormoption := &gorm.Config{
+	gormOption := &gorm.Config{
 		Logger: sqllogger,
 	}
 
 	switch config.Scheme {
 	case schemas.MySQL:
-		conn, err = gorm.Open(mysql.Open(config.Source), gormoption)
+		conn, err = gorm.Open(mysql.Open(config.Source), gormOption)
 	case schemas.Clickhouse:
-		conn, err = gorm.Open(clickhouse.Open(config.Source), gormoption)
+		conn, err = gorm.Open(clickhouse.Open(config.Source), gormOption)
 	default:
 		err = fmt.Errorf("unsupported database type : [ %s ]", config.Scheme)
 		return
@@ -187,30 +187,30 @@ func (client *DBClient) DB() *gorm.DB {
 	return client.db
 }
 
-// Session Session.“
+// Session create a new session.
 func (client *DBClient) Session() *gorm.DB {
 	return client.db.Session(&gorm.Session{})
 }
 
-// NewSession Session.
-func (client *DBClient) NewSession() *gorm.DB {
+// NewTx create a new transaction.
+func (client *DBClient) NewTx() *gorm.DB {
 	return client.db.Begin()
 }
 
-// NewSessionMaker create a session maker.
-func (client *DBClient) NewSessionMaker(session Session) (Session, *SesionMaker) {
-	return NewSessionMaker(session, client)
+// NewTxMaker create a tx maker.
+func (client *DBClient) NewTxMaker(tx Tx) (Tx, *TxMaker) {
+	return NewTxMaker(tx, client)
 }
 
 // SyncTables sync tables defined in  table object.
-func (client *DBClient) SyncTables(tables []interface{}) error {
+func (client *DBClient) SyncTables(tables []any) error {
 	var err error
 	dbop := DataBaseOption{
 		Cluster:      client.config.Cluster,
 		DatabaseName: client.db.Migrator().CurrentDatabase(),
 	}
 	for _, table := range tables {
-		tx, maker := NewSessionMaker(nil, client)
+		tx, maker := NewTxMaker(nil, client)
 		defer maker.Close(&err)
 		var opt TableOption
 
@@ -250,20 +250,11 @@ func (client *DBClient) DropTables(tables []any) error {
 }
 
 // StartMonitor Monitor DBState.
-func (model *DBClient) StartMonitor() {
-	db, err := model.db.DB()
-	if err != nil {
-		model.db.Logger.Error(context.Background(), "failed model.conn.DB()")
-		return
-	}
+func (client *DBClient) Stats() (sql.DBStats, error) {
 
-	for {
-		time.Sleep(1 * time.Minute)
-		stat := db.Stats()
-		msg := fmt.Sprintf("maxopen : %d , opened:  %d , idle : %d ,  inuse: %d , wait : %d,  waitduration : %s",
-			stat.MaxOpenConnections, stat.OpenConnections, stat.Idle, stat.InUse, stat.WaitCount,
-			stat.WaitDuration.String(),
-		)
-		model.db.Logger.Info(context.Background(), msg)
+	db, err := client.db.DB()
+	if err != nil {
+		return sql.DBStats{}, err
 	}
+	return db.Stats(), nil
 }

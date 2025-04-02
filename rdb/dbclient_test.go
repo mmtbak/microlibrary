@@ -3,8 +3,11 @@ package rdb
 import (
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/mmtbak/microlibrary/config"
 	"gopkg.in/go-playground/assert.v1"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
@@ -63,4 +66,43 @@ func TestParseConfig(t *testing.T) {
 		}
 		assert.Equal(t, config, tc.except)
 	}
+}
+
+type MockStaffTable struct {
+	ID   int `gorm:"primaryKey"`
+	Name string
+	Age  int
+}
+
+func TestDBClientTxMaker(t *testing.T) {
+
+	var err error
+	db, mock, err := sqlmock.New()
+	assert.Equal(t, err, nil)
+
+	// mock sql "select version()"
+	mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: db,
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	assert.Equal(t, err, nil)
+	// mock statement
+	// insert success
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO `mock_staff_tables`").WillReturnResult(sqlmock.NewResult(10, 1))
+	mock.ExpectCommit()
+
+	client := (&DBClient{}).WithDB(gormDB)
+	tx, maker := client.NewTxMaker(nil)
+	defer maker.Close(&err)
+
+	assert.Equal(t, err, nil)
+	assert.NotEqual(t, tx, nil)
+	assert.NotEqual(t, maker, nil)
+	err = tx.Create(&MockStaffTable{Name: "test", Age: 25}).Error
+	tx.Commit()
+
 }
