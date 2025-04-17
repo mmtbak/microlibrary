@@ -63,6 +63,10 @@ var LogLevelMap = map[string]logger.LogLevel{
 	"silent": logger.Silent,
 }
 
+func NewConfig() *Config {
+	return &Config{}
+}
+
 // ParseConfig Parse config from accesspoint.
 func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
 
@@ -179,6 +183,9 @@ func NewDBClient(config *Config) (*DBClient, error) {
 // WithDB set client db connection
 func (client *DBClient) WithDB(db *gorm.DB) *DBClient {
 	client.db = db
+	if client.config == nil {
+		client.config = NewConfig()
+	}
 	return client
 }
 
