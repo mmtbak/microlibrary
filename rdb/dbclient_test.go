@@ -106,3 +106,35 @@ func TestDBClientTxMaker(t *testing.T) {
 	tx.Commit()
 
 }
+
+func TestDBClientSyncTables(t *testing.T) {
+
+	var err error
+	db, mock, err := sqlmock.New()
+	assert.Equal(t, err, nil)
+
+	// mock sql "select version()"
+	mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: db,
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	assert.Equal(t, err, nil)
+	// mock statement
+	// insert success
+	mock.ExpectBegin()
+	mock.ExpectQuery("SELECT SCHEMA_NAME from Information_schema.SCHEMATA").
+		WillReturnRows(sqlmock.NewRows([]string{"SCHEMA_NAME"}))
+	expectedSQL := "CREATE TABLE `mock_staff_tables`"
+	mock.ExpectExec(expectedSQL).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	client := (&DBClient{}).WithDB(gormDB)
+	err = client.SyncTables([]any{&MockStaffTable{}})
+	assert.Equal(t, err, nil)
+}
+
+// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
+// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
+// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
