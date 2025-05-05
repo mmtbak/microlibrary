@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// FileLoader 从文件中加载配置.
+// FileLoader 从文件中加载配置
 type FileLoader struct {
 	filepath string
 	content  []byte
@@ -23,13 +23,22 @@ type FileOption struct {
 }
 
 func NewFileLoader(dsn string) (*FileLoader, error) {
+
 	var err error
-	option := FileOption{}
+	var option = FileOption{}
 	dsndata := dsnparser.Parse(dsn)
 	fppath := filepath.Join(dsndata.GetHostPort(), dsndata.GetPath())
 	content, err := os.ReadFile(fppath)
 	if err != nil {
 		return nil, err
+	}
+	fileext := filepath.Ext(fppath)
+	if fileext == ".json" {
+		option.Codec = Codecs.JSON
+	} else if fileext == ".yaml" {
+		option.Codec = Codecs.YAML
+	} else if fileext == ".toml" {
+		option.Codec = Codecs.TOML
 	}
 	err = dsndata.DecodeParams(&option)
 	if err != nil {
@@ -42,10 +51,12 @@ func NewFileLoader(dsn string) (*FileLoader, error) {
 		option:   option,
 	}
 	return loader, nil
+
 }
 
-// Load load config into val.
+// Load load config into val
 func (l *FileLoader) Load(val interface{}) error {
+
 	var err error
 	if TypeCodec(l.option.Codec) == Codecs.YAML {
 		err = yaml.Unmarshal(l.content, val)
@@ -59,7 +70,7 @@ func (l *FileLoader) Load(val interface{}) error {
 	return err
 }
 
-// Type return config type.
+// Type return config type
 func (l *FileLoader) Type() string {
 	return Filetype
 }
