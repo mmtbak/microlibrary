@@ -1,12 +1,14 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	"gopkg.in/go-playground/assert.v1"
 )
 
 func TestConfigParser(t *testing.T) {
+
 	var testcases = []struct {
 		source    string
 		protocol  string
@@ -14,39 +16,80 @@ func TestConfigParser(t *testing.T) {
 	}{
 		{
 			source:    "file://.",
-			wantError: false,
+			wantError: true,
 			protocol:  "file",
 		},
 		{
 			source:    "file://config.yaml",
-			wantError: false,
 			protocol:  "file",
+			wantError: true,
 		},
 		{
 			source:    "file:///etc/config.toml",
-			wantError: false,
 			protocol:  "file",
+			wantError: true,
+		},
+		{
+			source:    "file://example/config.yaml",
+			protocol:  "file",
+			wantError: false,
 		},
 		{
 			source:    "file://config.json",
-			wantError: false,
 			protocol:  "file",
+			wantError: true,
+		},
+		{
+			source:    "file://../config/example/config.yaml",
+			protocol:  "file",
+			wantError: false,
 		},
 		{
 			source:    "nacos://127.0.0.1:9000/",
-			wantError: false,
 			protocol:  "nacos",
+			wantError: true,
 		},
 	}
 
-	for _, tt := range testcases {
-		t.Run(tt.source, func(t *testing.T) {
-			conf, err := NewConfigLoader(tt.source)
-			assert.Equal(t, err == nil, tt.wantError)
-			if err != nil {
-				return
-			}
-			assert.Equal(t, conf.Type(), tt.protocol)
-		})
+	for idx, tt := range testcases {
+		fmt.Println("idx :--", idx)
+		cfg, err := NewConfigLoader(tt.source)
+		fmt.Println(err)
+		assert.Equal(t, err != nil, tt.wantError)
+		if err != nil {
+			continue
+		}
+		assert.Equal(t, cfg.Type(), tt.protocol)
+
 	}
+
+}
+
+func TestLoadConfig(t *testing.T) {
+
+	var err error
+	var testcases = []struct {
+		source    string
+		config    interface{}
+		wantError bool
+	}{
+		{
+			source:    "file://example/config.yaml",
+			config:    &config{},
+			wantError: false,
+		},
+	}
+
+	for idx, tt := range testcases {
+		fmt.Println("idx :--", idx)
+
+		err = LoadConfig(tt.source, tt.config)
+		fmt.Println(err)
+		assert.Equal(t, err != nil, tt.wantError)
+		if err != nil {
+			continue
+		}
+		fmt.Println(tt.config)
+	}
+
 }

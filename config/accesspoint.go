@@ -5,7 +5,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// AccessPoint  general access config.
+// AccessPoint  general access config
 type AccessPoint struct {
 	Source  string
 	Options map[string]interface{}
@@ -28,6 +28,7 @@ type DSN struct {
 
 // Decode decode
 func (p AccessPoint) Decode(op interface{}) (DSN, error) {
+
 	var err error
 	if op != nil {
 		err = mapstructure.Decode(p.Options, op)
