@@ -170,20 +170,27 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 }
 
 // SendMessage implements.
-func (mq *KafkaMessageQueue) SendMessage(msg []byte, opts ...SendMsgOption) error {
-	opt := MergeSendMsgOptions(opts)
+func (mq *KafkaMessageQueue) SendMessage(msg []byte, opts ...*SendMsgOption) error {
+	opt := NewSendMsgOption()
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
 	producer, err := mq.getProducer()
 	if err != nil {
 		return err
 	}
+	producerMsg := &sarama.ProducerMessage{
+		Value: sarama.ByteEncoder(msg),
+	}
+	if !opt.Sendtime.IsZero() {
+		producerMsg.Timestamp = opt.Sendtime
+	}
+	if opt.Key != "" {
+		producerMsg.Key = sarama.StringEncoder(opt.Key)
+	}
 	for _, topic := range mq.topics {
-		if _, _, err := producer.SendMessage(&sarama.ProducerMessage{
-			Topic:     topic,
-			Value:     sarama.ByteEncoder(msg),
-			Timestamp: opt.Sendtime,
-			// send key
-			Key: sarama.StringEncoder(opt.Key),
-		}); err != nil {
+		producerMsg.Topic = topic
+		if _, _, err := producer.SendMessage(producerMsg); err != nil {
 			return err
 		}
 	}
