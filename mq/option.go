@@ -27,18 +27,6 @@ func (opt *SendMsgOption) WithKey(key string) *SendMsgOption {
 	return opt
 }
 
-func (opt *SendMsgOption) Build() SendMsgOption {
-	return *opt
-}
-
-func MergeSendMsgOptions(opts []SendMsgOption) SendMsgOption {
-	defaultopt := NewSendMsgOption()
-	if len(opts) == 0 {
-		return *defaultopt
-	}
-	return opts[0]
-}
-
 type ConsumeMsgOption struct {
 	Poolsize int
 	Ctx      context.Context
@@ -51,17 +39,14 @@ func NewConsumeMsgOption() *ConsumeMsgOption {
 	}
 }
 
-func (opt *ConsumeMsgOption) WihtContext(ctx context.Context) *ConsumeMsgOption {
+func (opt *ConsumeMsgOption) WithContext(ctx context.Context) *ConsumeMsgOption {
 	opt.Ctx = ctx
 	return opt
 }
 
-func (opt *ConsumeMsgOption) WihtPoolsize(size int) *ConsumeMsgOption {
+func (opt *ConsumeMsgOption) WithPoolsize(size int) *ConsumeMsgOption {
 	opt.Poolsize = size
 	return opt
-}
-func (opt *ConsumeMsgOption) Build() ConsumeMsgOption {
-	return *opt
 }
 
 func MergeConsumeMsgOptions(opts []ConsumeMsgOption) ConsumeMsgOption {

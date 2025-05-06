@@ -24,7 +24,7 @@ func NewDataStream(mq MessageQueue, dataptr DataValue) *DataStream {
 	}
 }
 
-func (ds *DataStream) SendMessage(data DataValue, opts ...SendMsgOption) error {
+func (ds *DataStream) SendMessage(data DataValue, opts ...*SendMsgOption) error {
 	bytevalue, err := data.Marshal()
 	if err != nil {
 		return err
