@@ -13,8 +13,9 @@ func TestParseKafkaConfig(t *testing.T) {
 		"version":       "2.8.1",
 		"topics":        "my-event",
 		"consumergroup": "mygroup",
-		"myerrorconfig": "myerrvalue",
-		// "version": "1.1.1",
+		"buffersize":    "1024",
+		"numpartition":  "3",
+		"numreplica":    "2",
 	}
 	cfg, err := ParseKafkaConfig(data)
 	assert.Equal(t, err, nil)
@@ -27,7 +28,7 @@ func TestParseKafkaConfig(t *testing.T) {
 		Version:          sarama.V2_8_1_0,
 		Topics:           []string{"my-event"},
 		ConsumerGroup:    "mygroup",
-		ClientID:         "microlib-client",
+		ClientID:         "microlibrary-kafka-client",
 	}
 	assert.Equal(t, cfg, exceptconfig)
 }

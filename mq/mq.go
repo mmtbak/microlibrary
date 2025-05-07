@@ -15,8 +15,8 @@ type MessageQueue interface {
 	SyncSchema() error
 	// SendMessage send message
 	SendMessage(b []byte, opts ...*SendMsgOption) error
-	// ConsumeMessage , start consome message , return when failed
-	ConsumeMessage(cb ConsumeMessageFunc, opts ...ConsumeMsgOption) error
+	// ReceiveMessage receive message
+	ReceiveMessage() (<-chan Message, error)
 	// Close mq close
 	Close() error
 }
