@@ -22,10 +22,9 @@ type Cache interface {
 
 // NewCache new cache.
 func NewCache(conf config.AccessPoint) (Cache, error) {
-	dsn, err := conf.Decode(nil)
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	dsn := conf.Decode()
+
 	switch dsn.Scheme {
 	case "freecache":
 		return NewFreecache(conf)

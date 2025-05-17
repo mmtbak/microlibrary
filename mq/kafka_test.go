@@ -7,8 +7,22 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/IBM/sarama/mocks"
+	"github.com/mmtbak/microlibrary/config"
 	"gopkg.in/go-playground/assert.v1"
 )
+
+func TestKafkaSyncSchema(t *testing.T) {
+	accessconfig := config.AccessPoint{
+		Source: "kafka://localhost:9092/?" +
+			"topics=my-event-test-topic" +
+			"&numpartition=2&numreplica=1&autocommitsecond=1" +
+			"initial=oldest&version=1.1.1&clientid=microlibrary-kafka-client",
+	}
+	kafkamq, err := NewKafkaMessageQueue(accessconfig)
+	assert.Equal(t, err, nil)
+	err = kafkamq.SyncSchema()
+	assert.Equal(t, err, nil)
+}
 
 func TestKafkaSendMessage(t *testing.T) {
 

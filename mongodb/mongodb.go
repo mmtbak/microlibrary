@@ -3,7 +3,8 @@ package rdb
 import (
 	"context"
 
-	log "github.com/InVisionApp/go-logger"
+	"log/slog"
+
 	"github.com/mmtbak/microlibrary/config"
 	"github.com/qiniu/qmgo"
 )
@@ -12,17 +13,13 @@ import (
 type MongoClient struct {
 	conn     *qmgo.QmgoClient
 	config   config.AccessPoint
-	logger   log.Logger
+	logger   slog.Logger
 	Database string
 }
 
 // NewMongoClient Create DBEngine instance.
 func NewMongoClient(conf config.AccessPoint) (*MongoClient, error) {
-	dsn, err := conf.Decode(nil)
-	if err != nil {
-		return nil, err
-	}
-
+	dsn := conf.Decode()
 	conn, err := qmgo.Open(context.Background(), &qmgo.Config{Uri: conf.Source, Database: dsn.Path})
 	if err != nil {
 		return nil, err
@@ -38,7 +35,7 @@ func NewMongoClient(conf config.AccessPoint) (*MongoClient, error) {
 }
 
 // SetLogger set logger.
-func (client *MongoClient) SetLogger(logger log.Logger) {
+func (client *MongoClient) SetLogger(logger slog.Logger) {
 	client.logger = logger
 }
 

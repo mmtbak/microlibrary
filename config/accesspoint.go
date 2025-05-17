@@ -1,14 +1,14 @@
 package config
 
 import (
-	"github.com/kos-v/dsnparser"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mmtbak/dsnparser"
 )
 
 // AccessPoint  general access config
 type AccessPoint struct {
 	Source  string
-	Options map[string]interface{}
+	Options map[string]any
 }
 
 // DSN container for data after dsn parsing.
@@ -27,17 +27,8 @@ type DSN struct {
 }
 
 // Decode decode
-func (p AccessPoint) Decode(op interface{}) (DSN, error) {
-
-	var err error
-	if op != nil {
-		err = mapstructure.Decode(p.Options, op)
-		if err != nil {
-			return DSN{}, err
-		}
-	}
+func (p AccessPoint) Decode() DSN {
 	dsndata := dsnparser.Parse(p.Source)
-
 	dsn := DSN{
 		RAW:       dsndata.GetRaw(),
 		Scheme:    dsndata.GetScheme(),
@@ -51,5 +42,9 @@ func (p AccessPoint) Decode(op interface{}) (DSN, error) {
 		Params:    dsndata.GetParams(),
 		Transport: dsndata.GetTransport(),
 	}
-	return dsn, nil
+	return dsn
+}
+
+func (p AccessPoint) DecodeOption(op any) error {
+	return mapstructure.Decode(p.Options, op)
 }

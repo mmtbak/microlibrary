@@ -40,8 +40,7 @@ func TestAccessPoint(t *testing.T) {
 		Transport: "tcp",
 	}
 	var param Param
-	dsn, err := config.Decode(&param)
-	assert.Equal(t, err, nil)
+	dsn := config.Decode()
 	assert.Equal(t, param, expectParam)
 	// assert.Equal(t, dsn, expectDSN)
 	assert.Equal(t, dsn.Host, expectDSN.Host)

@@ -15,7 +15,7 @@ import (
 type KafkaMessageQueue struct {
 	access   config.AccessPoint
 	config   *KafkaConfig
-	dsndata  config.DSN
+	dsn      config.DSN
 	hosts    []string
 	topics   []string
 	producer sarama.SyncProducer
@@ -28,10 +28,8 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (*KafkaMessageQueue, error) {
 	var err error
 	var config *KafkaConfig
 
-	dsndata, err := conf.Decode(nil)
-	if err != nil {
-		return nil, err
-	}
+	dsndata := conf.Decode()
+
 	// 转换成小写
 	hoststr := dsndata.Hostport
 	hosts := strings.Split(hoststr, ",")
@@ -54,7 +52,7 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (*KafkaMessageQueue, error) {
 	kafkamq := &KafkaMessageQueue{
 		access:   conf,
 		config:   config,
-		dsndata:  dsndata,
+		dsn:      dsndata,
 		hosts:    hosts,
 		topics:   topics,
 		producer: nil,
@@ -159,10 +157,10 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 func (mq *KafkaMessageQueue) GenConfig() *sarama.Config {
 
 	config := mq.config.GenConfig()
-	if mq.dsndata.User != "" || mq.dsndata.Password != "" {
+	if mq.dsn.User != "" || mq.dsn.Password != "" {
 		config.Net.SASL.Enable = true
-		config.Net.SASL.User = mq.dsndata.User
-		config.Net.SASL.Password = mq.dsndata.Password
+		config.Net.SASL.User = mq.dsn.User
+		config.Net.SASL.Password = mq.dsn.Password
 		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 
 	}
