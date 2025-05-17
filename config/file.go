@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kos-v/dsnparser"
+	"github.com/mitchellh/mapstructure"
+	"github.com/mmtbak/dsnparser"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,7 +41,7 @@ func NewFileLoader(dsn string) (*FileLoader, error) {
 	} else if fileext == ".toml" {
 		option.Codec = Codecs.TOML
 	}
-	err = dsndata.DecodeParams(&option)
+	err = mapstructure.Decode(dsndata.GetParams(), &option)
 	if err != nil {
 		return nil, err
 	}

@@ -31,10 +31,8 @@ type Message interface {
 
 // NewMessageQueue ...
 func NewMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
-	dsn, err := conf.Decode(nil)
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	dsn := conf.Decode()
 	switch dsn.Scheme {
 	case "kafka":
 		return NewKafkaMessageQueue(conf)

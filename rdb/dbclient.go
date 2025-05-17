@@ -69,11 +69,11 @@ func NewConfig() *Config {
 
 // ParseConfig Parse config from accesspoint.
 func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
-
 	clientoption := defaultDBClientOptions
 	config = &Config{}
 
-	dsn, err := conf.Decode(&clientoption)
+	dsn := conf.Decode()
+	err = conf.DecodeOption(&clientoption)
 	if err != nil {
 		return nil, err
 	}
