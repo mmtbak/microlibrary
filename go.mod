@@ -8,7 +8,6 @@ require (
 	github.com/IBM/sarama v1.42.1
 	github.com/coocood/freecache v1.2.4
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/kos-v/dsnparser v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mmtbak/dsnparser v0.0.0-20250517034549-8858a2c28415
 	github.com/panjf2000/ants/v2 v2.8.1

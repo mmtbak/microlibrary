@@ -41,6 +41,8 @@ func TestAccessPoint(t *testing.T) {
 	}
 	var param Param
 	dsn := config.Decode()
+	err := config.DecodeOption(&param)
+	assert.Equal(t, err, nil)
 	assert.Equal(t, param, expectParam)
 	// assert.Equal(t, dsn, expectDSN)
 	assert.Equal(t, dsn.Host, expectDSN.Host)

@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/kos-v/dsnparser"
+	"github.com/mmtbak/dsnparser"
 )
 
 // ConfigLoader 配置中心load接口类的定义
