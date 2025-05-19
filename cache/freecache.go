@@ -23,14 +23,12 @@ type freecacheParam struct {
 
 // NewFreecache free cache.
 func NewFreecache(conf config.AccessPoint) (*FreeCache, error) {
+	var err error
 	param := freecacheParam{
 		SizeKB: defaultcachesizekb,
 	}
 
-	dsndata, err := conf.Decode(nil)
-	if err != nil {
-		return nil, err
-	}
+	dsndata := conf.Decode()
 	params := dsndata.Params
 	if sizekb, ok := params["sizekb"]; ok {
 		param.SizeKB, err = strconv.Atoi(sizekb)

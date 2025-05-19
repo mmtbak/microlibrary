@@ -1,11 +1,11 @@
 SHELL := /bin/bash
 GO := go
 GOOS ?= $(shell uname -s | tr [:upper:] [:lower:])
-# GOTEST ?= ${GO} test
-GOTEST ?= richgo test
 GOARCH ?= $(shell go env GOARCH)
 GOPATH ?= $(shell go env GOPATH)
 PROTOFILE := proto/skyflow.proto
+# GOTEST ?= ${GO} test
+GOTEST ?= ${GOPATH}/bin/richgo test
 FLAGS := -ldflags="-s -w"
 
 
