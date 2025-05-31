@@ -1,7 +1,9 @@
 package mq
 
 import (
+	"log"
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -12,15 +14,22 @@ import (
 )
 
 func TestKafkaSyncSchema(t *testing.T) {
+	sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
 	accessconfig := config.AccessPoint{
-		Source: "kafka://localhost:9092/?" +
+		Source: "kafka://127.0.0.1:9092/?" +
 			"topics=my-event-test-topic" +
 			"&numpartition=2&numreplica=1&autocommitsecond=1" +
-			"initial=oldest&version=1.1.1&clientid=microlibrary-kafka-client",
+			"initial=oldest&clientid=microlibrary-kafka-client",
 	}
+	slog.Info("connecting to kafka")
 	kafkamq, err := NewKafkaMessageQueue(accessconfig)
 	assert.Equal(t, err, nil)
+	slog.Info("sync schema")
 	err = kafkamq.SyncSchema()
+	assert.Equal(t, err, nil)
+	slog.Info("send message")
+	msg := []byte("test message content" + time.Now().Format("2006-1-2 15:04:05"))
+	err = kafkamq.SendMessage(msg)
 	assert.Equal(t, err, nil)
 }
 
@@ -38,15 +47,15 @@ func TestKafkaSendMessage(t *testing.T) {
 		producer: mockproducer,
 		topics:   topics,
 		config: &KafkaConfig{
-			Topics:           topics,
-			ConsumerGroup:    "my-event-group",
-			NumOfPartition:   3,
-			NumOfReplica:     2,
-			AutoCommitSecond: 1,
-			BufferSize:       1024,
-			Initial:          sarama.OffsetNewest,
-			Version:          sarama.V1_1_1_0,
-			ClientID:         "microlibrary-kafka-client",
+			Topics:             topics,
+			ConsumerGroup:      "my-event-group",
+			NumOfPartition:     3,
+			NumOfReplica:       2,
+			AutoCommitSecond:   1,
+			ProducerBufferSize: 1024,
+			Initial:            sarama.OffsetNewest,
+			Version:            sarama.V1_1_1_0,
+			ClientID:           "microlibrary-kafka-client",
 		},
 		hosts:  []string{"localhost:9092"},
 		logger: slog.Default(),

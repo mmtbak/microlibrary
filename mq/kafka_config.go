@@ -52,35 +52,37 @@ var configParseFuncs = map[string]configParseFunc{
 	},
 	"buffersize": func(config *KafkaConfig, val string) error {
 		var err error
-		config.BufferSize, err = strconv.Atoi(val)
+		config.ProducerBufferSize, err = strconv.Atoi(val)
 		return err
 	},
 }
 
 // KafkaConfig @Description:.
 type KafkaConfig struct {
-	Topics           []string // @Description: 接受消息的topic
-	ConsumerGroup    string   // @Description: 消费者组名称
-	NumOfPartition   int
-	NumOfReplica     int
-	AutoCommitSecond int
-	BufferSize       int
-	Initial          int64 // 最新偏移消息
-	Version          sarama.KafkaVersion
-	ClientID         string
+	Topics             []string // @Description: 接受消息的topic
+	ConsumerGroup      string   // @Description: 消费者组名称
+	NumOfPartition     int
+	NumOfReplica       int
+	AutoCommitSecond   int
+	ProducerBufferSize int
+	ProducerFrequency  time.Duration // 生产者flush的频率
+	Initial            int64         // 最新偏移消息
+	Version            sarama.KafkaVersion
+	ClientID           string
 }
 
 func NewDefaultKafkaConfig() *KafkaConfig {
 	return &KafkaConfig{
-		Topics:           []string{},
-		ConsumerGroup:    "microlibrary-kafka-group",
-		NumOfPartition:   3,
-		NumOfReplica:     2,
-		AutoCommitSecond: 1,
-		BufferSize:       1024,
-		Initial:          sarama.OffsetNewest,
-		Version:          sarama.V1_1_1_0,
-		ClientID:         "microlibrary-kafka-client",
+		Topics:             []string{},
+		ConsumerGroup:      "microlibrary-kafka-group",
+		NumOfPartition:     3,
+		NumOfReplica:       2,
+		AutoCommitSecond:   1,
+		ProducerBufferSize: 1024,
+		ProducerFrequency:  500 * time.Millisecond,
+		Initial:            sarama.OffsetNewest,
+		Version:            sarama.DefaultVersion,
+		ClientID:           "microlibrary-kafka-client",
 	}
 }
 
@@ -106,12 +108,13 @@ func (c *KafkaConfig) GenConfig() *sarama.Config {
 	// producer
 	newconfig.Producer.Return.Successes = true
 	newconfig.Producer.RequiredAcks = sarama.WaitForAll
-	newconfig.Producer.Flush.Messages = c.BufferSize
+	newconfig.Producer.Flush.Messages = c.ProducerBufferSize
+	newconfig.Producer.Flush.Frequency = c.ProducerFrequency
 	// consumer
 	newconfig.Consumer.Offsets.Initial = c.Initial
-	newconfig.ChannelBufferSize = c.BufferSize
+	newconfig.ChannelBufferSize = c.ProducerBufferSize
 	newconfig.Consumer.Return.Errors = true
 	newconfig.Consumer.Offsets.AutoCommit.Enable = true
-	newconfig.Consumer.Offsets.AutoCommit.Interval = time.Duration(c.AutoCommitSecond * int(time.Second))
+	newconfig.Consumer.Offsets.AutoCommit.Interval = time.Duration(c.AutoCommitSecond) * time.Second
 	return newconfig
 }
