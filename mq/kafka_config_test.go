@@ -2,6 +2,7 @@ package mq
 
 import (
 	"testing"
+	"time"
 
 	"github.com/IBM/sarama"
 	"gopkg.in/go-playground/assert.v1"
@@ -24,6 +25,7 @@ func TestParseKafkaConfig(t *testing.T) {
 		NumOfReplica:       2,
 		AutoCommitSecond:   1,
 		ProducerBufferSize: 1024,
+		ProducerFrequency:  500 * time.Millisecond,
 		Initial:            sarama.OffsetOldest,
 		Version:            sarama.V2_8_1_0,
 		Topics:             []string{"my-event"},
