@@ -9,20 +9,17 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/IBM/sarama/mocks"
-	"github.com/mmtbak/microlibrary/config"
 	"gopkg.in/go-playground/assert.v1"
 )
 
 func TestKafkaSyncSchema(t *testing.T) {
 	sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
-	accessconfig := config.AccessPoint{
-		Source: "kafka://127.0.0.1:9092/?" +
-			"topics=my-event-test-topic" +
-			"&numpartition=2&numreplica=1&autocommitsecond=1" +
-			"initial=oldest&clientid=microlibrary-kafka-client",
-	}
+	kafkaSource := "kafka://127.0.0.1:9092/?" +
+		"topics=my-event-test-topic" +
+		"&numpartition=2&numreplica=1&autocommitsecond=1" +
+		"initial=oldest&clientid=microlibrary-kafka-client"
 	slog.Info("connecting to kafka")
-	kafkamq, err := NewKafkaMessageQueue(accessconfig)
+	kafkamq, err := NewKafkaMessageQueue(kafkaSource)
 	assert.Equal(t, err, nil)
 	slog.Info("sync schema")
 	err = kafkamq.SyncSchema()
