@@ -3,7 +3,7 @@ package mq
 import (
 	"fmt"
 
-	"github.com/mmtbak/microlibrary/config"
+	"github.com/mmtbak/dsnparser"
 )
 
 // ConsumeMessageFunc 处理消息方法，默认不应答ack.
@@ -30,14 +30,15 @@ type Message interface {
 }
 
 // NewMessageQueue ...
-func NewMessageQueue(conf config.AccessPoint) (MessageQueue, error) {
+func NewMessageQueue(source string) (MessageQueue, error) {
 	var err error
-	dsn := conf.Decode()
-	switch dsn.Scheme {
+	dsndata := dsnparser.Parse(source)
+	schema := dsndata.GetScheme()
+	switch schema {
 	case "kafka":
-		return NewKafkaMessageQueue(conf)
+		return NewKafkaMessageQueue(source)
 	default:
-		err = fmt.Errorf("mq:unsupported schema '%s'", dsn.Scheme)
+		err = fmt.Errorf("mq:unsupported schema '%s'", schema)
 	}
 	return nil, err
 }

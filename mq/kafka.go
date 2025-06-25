@@ -7,15 +7,15 @@ import (
 	"strings"
 
 	"github.com/IBM/sarama"
-	"github.com/mmtbak/microlibrary/config"
+	"github.com/mmtbak/dsnparser"
 	"github.com/pkg/errors"
 )
 
 // KafkaMessageQueue  kafka实现的队列
 type KafkaMessageQueue struct {
-	access   config.AccessPoint
+	Source   string
 	config   *KafkaConfig
-	dsn      config.DSN
+	dsn      *dsnparser.DSN
 	hosts    []string
 	topics   []string
 	producer sarama.SyncProducer
@@ -24,19 +24,19 @@ type KafkaMessageQueue struct {
 }
 
 // NewKafkaMessageQueue new message queue
-func NewKafkaMessageQueue(conf config.AccessPoint) (*KafkaMessageQueue, error) {
+func NewKafkaMessageQueue(source string) (*KafkaMessageQueue, error) {
 	var err error
 	var config *KafkaConfig
 
-	dsndata := conf.Decode()
+	dsndata := dsnparser.Parse(source)
 
 	// 转换成小写
-	hoststr := dsndata.Hostport
+	hoststr := dsndata.GetHostPort()
 	hosts := strings.Split(hoststr, ",")
 	// params 的解析
 
-	if dsndata.Params != nil {
-		config, err = ParseKafkaConfig(dsndata.Params)
+	if dsndata.GetParams() != nil {
+		config, err = ParseKafkaConfig(dsndata.GetParams())
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +50,7 @@ func NewKafkaMessageQueue(conf config.AccessPoint) (*KafkaMessageQueue, error) {
 	// producer 发送时创建
 	// consumer group 消费时创建
 	kafkamq := &KafkaMessageQueue{
-		access:   conf,
+		Source:   source,
 		config:   config,
 		dsn:      dsndata,
 		hosts:    hosts,
@@ -157,10 +157,10 @@ func (mq *KafkaMessageQueue) newConsumer() (sarama.ConsumerGroup, error) {
 func (mq *KafkaMessageQueue) GenConfig() *sarama.Config {
 
 	config := mq.config.GenConfig()
-	if mq.dsn.User != "" || mq.dsn.Password != "" {
+	if mq.dsn.GetUser() != "" || mq.dsn.GetPassword() != "" {
 		config.Net.SASL.Enable = true
-		config.Net.SASL.User = mq.dsn.User
-		config.Net.SASL.Password = mq.dsn.Password
+		config.Net.SASL.User = mq.dsn.GetUser()
+		config.Net.SASL.Password = mq.dsn.GetPassword()
 		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 
 	}
