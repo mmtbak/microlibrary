@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // mysql driver
+	"github.com/mmtbak/dsnparser"
 	"github.com/mmtbak/microlibrary/config"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
@@ -25,18 +26,18 @@ var schemas = struct {
 // DBClient Gorm的数据库连接.
 type DBClient struct {
 	db     *gorm.DB
+	schema string // 数据库类型
 	config *Config
 }
 
 // Config DBClient配置.
 type Config struct {
-	Scheme      string
-	Source      string
-	MaxOpenConn int
-	MaxIdleConn int
-	MaxIdleTime time.Duration
-	LogLevel    logger.LogLevel
-	Cluster     string
+	DSN         string `json:"dsn" yaml:"dsn"` // 数据库连接字符串
+	MaxOpenConn int    `json:"max_open_conn"  yaml:"max_open_conn"`
+	MaxIdleConn int    `json:"max_idle_conn" yaml:"max_idle_conn"`
+	MaxIdleTime string `json:"max_idle_time" yaml:"max_idle_time"` // 连接池最大空闲时间
+	LogLevel    string `json:"log_level" yaml:"log_level"`         // 日志级别
+	Cluster     string `json:"cluster" yaml:"cluster"`             // 集群名称
 }
 
 // DBClientOptions DBClient 配置选项.
@@ -79,13 +80,6 @@ func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
 	}
 	dsn.Scheme = strings.ToLower(dsn.Scheme)
 
-	// 设置日志级别
-
-	loglevel, ok := LogLevelMap[clientoption.LogLevel]
-	if !ok {
-		err = fmt.Errorf("unsupported loglevel : [ %s ]", clientoption.LogLevel)
-		return
-	}
 	// detect db type
 	switch dsn.Scheme {
 	case schemas.MySQL:
@@ -105,20 +99,20 @@ func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
 	}
 
 	config = &Config{
-		Scheme:      dsn.Scheme,
-		Source:      dsn.Source,
-		LogLevel:    loglevel,
+		DSN:         dsn.RAW,
+		LogLevel:    clientoption.LogLevel,
 		MaxOpenConn: clientoption.MaxOpenConn,
 		MaxIdleConn: clientoption.MaxIdleConn,
+		MaxIdleTime: clientoption.MaxIdleTime,
 		Cluster:     clientoption.Cluster,
 	}
 
 	if clientoption.MaxIdleTime != "" {
-		maxidletime, err := time.ParseDuration(clientoption.MaxIdleTime)
+		_, err := time.ParseDuration(clientoption.MaxIdleTime)
 		if err != nil {
 			return nil, err
 		}
-		config.MaxIdleTime = maxidletime
+		config.MaxIdleTime = clientoption.MaxIdleTime
 	}
 	return config, nil
 }
@@ -128,19 +122,29 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 
 	// 设置日志级别
 	sqllogger := logger.Default
-	sqllogger.LogMode(config.LogLevel)
+
+	if config.LogLevel != "" {
+		if loglevel, ok := LogLevelMap[config.LogLevel]; ok {
+			sqllogger.LogMode(loglevel)
+		} else {
+			err = fmt.Errorf("unsupported log level : [ %s ]", config.LogLevel)
+			return
+		}
+	}
 
 	gormOption := &gorm.Config{
 		Logger: sqllogger,
 	}
+	dsnData := dsnparser.Parse(config.DSN)
 
-	switch config.Scheme {
+	schema := dsnData.GetScheme()
+	switch schema {
 	case schemas.MySQL:
-		conn, err = gorm.Open(mysql.Open(config.Source), gormOption)
+		conn, err = gorm.Open(mysql.Open(config.DSN), gormOption)
 	case schemas.Clickhouse:
-		conn, err = gorm.Open(clickhouse.Open(config.Source), gormOption)
+		conn, err = gorm.Open(clickhouse.Open(config.DSN), gormOption)
 	default:
-		err = fmt.Errorf("unsupported database type : [ %s ]", config.Scheme)
+		err = fmt.Errorf("unsupported database type : [ %s ]", schema)
 		return
 	}
 	if err != nil {
@@ -152,9 +156,14 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 		return
 	}
 
+	maxIdleTime, err := time.ParseDuration(config.MaxIdleTime)
+	if err != nil {
+		return nil, err
+	}
+
 	// 设置连接池
-	if config.MaxIdleTime > 0 {
-		db.SetConnMaxIdleTime(config.MaxIdleTime)
+	if maxIdleTime > 0 {
+		db.SetConnMaxIdleTime(maxIdleTime)
 	}
 	if config.MaxIdleConn > 0 {
 		db.SetMaxIdleConns(config.MaxIdleConn)
@@ -175,6 +184,7 @@ func NewDBClient(config *Config) (*DBClient, error) {
 	}
 	client := &DBClient{
 		db:     conn,
+		schema: conn.Name(),
 		config: config,
 	}
 	return client, nil
@@ -222,7 +232,7 @@ func (client *DBClient) SyncTables(tables []any) error {
 		var opt TableOption
 
 		// 如果DB是clickhouse ， 则尝试解析clickhouse tableoption
-		if client.config.Scheme == schemas.Clickhouse {
+		if client.schema == schemas.Clickhouse {
 			// 发现确实有clickhouse的tableoption，则解析tableoption
 			if cktable, ok := table.(ClickhouseTable); ok {
 				opt = cktable.ClickhouseTableOption(dbop)
@@ -234,7 +244,7 @@ func (client *DBClient) SyncTables(tables []any) error {
 				}
 			}
 			// 如果DB是mysql ，则尝试解析mysql tableoption
-		} else if client.config.Scheme == schemas.MySQL {
+		} else if client.schema == schemas.MySQL {
 			// 发现确实db是mysql，则解析tableoption
 			if mytable, ok := table.(MySQLTable); ok {
 				opt = mytable.MySQLTableOption(dbop)
