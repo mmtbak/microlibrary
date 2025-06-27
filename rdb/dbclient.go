@@ -32,28 +32,28 @@ type DBClient struct {
 
 // Config DBClient配置.
 type Config struct {
-	DSN         string `json:"dsn" yaml:"dsn"` // 数据库连接字符串
-	MaxOpenConn int    `json:"max_open_conn"  yaml:"max_open_conn"`
-	MaxIdleConn int    `json:"max_idle_conn" yaml:"max_idle_conn"`
-	MaxIdleTime string `json:"max_idle_time" yaml:"max_idle_time"` // 连接池最大空闲时间
-	LogLevel    string `json:"log_level" yaml:"log_level"`         // 日志级别
-	Cluster     string `json:"cluster" yaml:"cluster"`             // 集群名称
+	DSN          string `json:"dsn" yaml:"dsn"` // 数据库连接字符串
+	MaxOpenConns int    `json:"max_open_conns"  yaml:"max_open_conns"`
+	MaxIdleConns int    `json:"max_idle_conns" yaml:"max_idle_conns"`
+	MaxIdleTime  string `json:"max_idle_time" yaml:"max_idle_time"` // 连接池最大空闲时间
+	LogLevel     string `json:"log_level" yaml:"log_level"`         // 日志级别
+	Cluster      string `json:"cluster" yaml:"cluster"`             // 集群名称
 }
 
 // DBClientOptions DBClient 配置选项.
 type DBClientOptions struct {
-	MaxOpenConn int
-	MaxIdleConn int
-	MaxIdleTime string
-	LogLevel    string
-	Cluster     string
+	MaxOpenConns int
+	MaxIdleConns int
+	MaxIdleTime  string
+	LogLevel     string
+	Cluster      string
 }
 
 var defaultDBClientOptions = DBClientOptions{
-	MaxOpenConn: 100,
-	MaxIdleConn: 100,
-	MaxIdleTime: "",
-	LogLevel:    "info",
+	MaxOpenConns: 100,
+	MaxIdleConns: 100,
+	MaxIdleTime:  "",
+	LogLevel:     "info",
 }
 
 // LogLevelMap log level for config string.
@@ -99,12 +99,12 @@ func ParseConfig(conf config.AccessPoint) (config *Config, err error) {
 	}
 
 	config = &Config{
-		DSN:         dsn.RAW,
-		LogLevel:    clientoption.LogLevel,
-		MaxOpenConn: clientoption.MaxOpenConn,
-		MaxIdleConn: clientoption.MaxIdleConn,
-		MaxIdleTime: clientoption.MaxIdleTime,
-		Cluster:     clientoption.Cluster,
+		DSN:          dsn.RAW,
+		LogLevel:     clientoption.LogLevel,
+		MaxOpenConns: clientoption.MaxOpenConns,
+		MaxIdleConns: clientoption.MaxIdleConns,
+		MaxIdleTime:  clientoption.MaxIdleTime,
+		Cluster:      clientoption.Cluster,
 	}
 
 	if clientoption.MaxIdleTime != "" {
@@ -165,11 +165,11 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 	if maxIdleTime > 0 {
 		db.SetConnMaxIdleTime(maxIdleTime)
 	}
-	if config.MaxIdleConn > 0 {
-		db.SetMaxIdleConns(config.MaxIdleConn)
+	if config.MaxIdleConns > 0 {
+		db.SetMaxIdleConns(config.MaxIdleConns)
 	}
-	if config.MaxOpenConn > 0 {
-		db.SetMaxOpenConns(config.MaxOpenConn)
+	if config.MaxOpenConns > 0 {
+		db.SetMaxOpenConns(config.MaxOpenConns)
 	}
 
 	return conn, nil
