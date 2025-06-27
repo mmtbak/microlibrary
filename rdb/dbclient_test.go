@@ -133,6 +133,17 @@ func TestDBClientSyncTables(t *testing.T) {
 	assert.Equal(t, err, nil)
 }
 
-// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
-// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
-// CREATE TABLE `mock_staff_tables` (`id` bigint AUTO_INCREMENT,`name` longtext,`age` bigint,PRIMARY KEY (`id`))
+func TestConnectMySQL(t *testing.T) {
+
+	dbConfig := &Config{
+		DSN:          "mysql://root:root@tcp(127.0.0.1:3306)/testdb?charset=utf8&parseTime=true&loc=Local",
+		MaxOpenConns: 200,
+		MaxIdleConns: 200,
+		LogLevel:     "info",
+		Cluster:      "",
+	}
+	dbClient, err := NewDBClient(dbConfig)
+	assert.Equal(t, err, nil)
+	err = dbClient.SyncTables([]any{&MockStaffTable{}})
+	assert.Equal(t, err, nil)
+}
