@@ -138,11 +138,12 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 	dsnData := dsnparser.Parse(config.DSN)
 
 	schema := dsnData.GetScheme()
+	source := dsnData.GetSource()
 	switch schema {
 	case schemas.MySQL:
-		conn, err = gorm.Open(mysql.Open(config.DSN), gormOption)
+		conn, err = gorm.Open(mysql.Open(source), gormOption)
 	case schemas.Clickhouse:
-		conn, err = gorm.Open(clickhouse.Open(config.DSN), gormOption)
+		conn, err = gorm.Open(clickhouse.Open(source), gormOption)
 	default:
 		err = fmt.Errorf("unsupported database type : [ %s ]", schema)
 		return
@@ -155,21 +156,22 @@ func Open(config *Config) (conn *gorm.DB, err error) {
 	if err != nil {
 		return
 	}
-
-	maxIdleTime, err := time.ParseDuration(config.MaxIdleTime)
-	if err != nil {
-		return nil, err
-	}
-
-	// 设置连接池
-	if maxIdleTime > 0 {
-		db.SetConnMaxIdleTime(maxIdleTime)
-	}
 	if config.MaxIdleConns > 0 {
 		db.SetMaxIdleConns(config.MaxIdleConns)
 	}
 	if config.MaxOpenConns > 0 {
 		db.SetMaxOpenConns(config.MaxOpenConns)
+	}
+
+	if config.MaxIdleTime != "" {
+		maxIdleTime, err := time.ParseDuration(config.MaxIdleTime)
+		if err != nil {
+			return nil, err
+		}
+		// 设置连接池
+		if maxIdleTime > 0 {
+			db.SetConnMaxIdleTime(maxIdleTime)
+		}
 	}
 
 	return conn, nil

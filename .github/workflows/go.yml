@@ -28,6 +28,21 @@ jobs:
           KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
         volumes:
           - "kafka_data:/bitnami/kafka"
+      mysql:
+        image: bitnami/mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root  # root password
+          MYSQL_DATABASE: testdb        # auto created database
+          # MYSQL_USER: root           #  auto created user
+          # MYSQL_PASSWORD: devpass       # auto created user password
+          TZ: Asia/Shanghai             # 时区设置
+        options: >-
+          --health-cmd "mysqladmin ping -p$$MYSQL_ROOT_PASSWORD"
+          --health-interval 10s
+          --health-timeout 5s
+              --health-retries 3
     steps:
     - uses: actions/checkout@v4
 
