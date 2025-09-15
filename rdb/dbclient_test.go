@@ -136,7 +136,7 @@ func TestDBClientSyncTables(t *testing.T) {
 func TestConnectMySQL(t *testing.T) {
 
 	dbConfig := &Config{
-		DSN:          "mysql://root:root@tcp(127.0.0.1:3306)/testdb?charset=utf8&parseTime=true&loc=Local",
+		DSN:          "mysql://root:rootpassword@tcp(127.0.0.1:3306)/testdb?charset=utf8&parseTime=true&loc=Local",
 		MaxOpenConns: 200,
 		MaxIdleConns: 200,
 		LogLevel:     "info",
@@ -145,5 +145,37 @@ func TestConnectMySQL(t *testing.T) {
 	dbClient, err := NewDBClient(dbConfig)
 	assert.Equal(t, err, nil)
 	err = dbClient.SyncTables([]any{&MockStaffTable{}})
+	assert.Equal(t, err, nil)
+}
+
+func TestTruncateTables(t *testing.T) {
+	type User struct {
+		ID   uint
+		Name string
+		Age  int
+	}
+	type Product struct {
+		ID    uint
+		Name  string
+		Price float64
+	}
+	var err error
+	db, mock, err := sqlmock.New()
+	assert.Equal(t, err, nil)
+	// mock sql "select version()"
+	mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{
+		Conn: db,
+	}), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	assert.Equal(t, err, nil)
+	// mock statement
+	mock.ExpectBegin()
+	mock.ExpectExec("TRUNCATE TABLE users").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("TRUNCATE TABLE products").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	client := (&DBClient{}).WithDB(gormDB)
+	err = client.TruncateTables([]any{&User{}, &Product{}})
 	assert.Equal(t, err, nil)
 }
