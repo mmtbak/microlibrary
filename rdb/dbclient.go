@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // mysql driver
@@ -13,6 +14,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 var schemas = struct {
@@ -276,4 +278,23 @@ func (client *DBClient) Stats() (sql.DBStats, error) {
 		return sql.DBStats{}, err
 	}
 	return db.Stats(), nil
+}
+
+func (client *DBClient) TruncateTables(tables []any) error {
+
+	var err error
+	tx, maker := NewTxMaker(nil, client)
+	defer maker.Close(&err)
+	for _, table := range tables {
+		schema, err := schema.Parse(table, &sync.Map{}, client.DB().NamingStrategy)
+		if err != nil {
+			return err
+		}
+		tableName := schema.Table
+		err = tx.Exec("TRUNCATE TABLE " + tableName).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

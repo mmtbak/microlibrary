@@ -33,7 +33,7 @@ jobs:
         ports:
           - 3306:3306
         env:
-          MYSQL_ROOT_PASSWORD: root  # root password
+          MYSQL_ROOT_PASSWORD: rootpassword  # root password
           MYSQL_DATABASE: testdb        # auto created database
           # MYSQL_USER: root           #  auto created user
           # MYSQL_PASSWORD: devpass       # auto created user password
