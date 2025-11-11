@@ -203,6 +203,10 @@ func (client *DBClient) WithDB(db *gorm.DB) *DBClient {
 	return client
 }
 
+func (client *DBClient) GetConfig() *Config {
+	return client.config
+}
+
 // DB DB.
 func (client *DBClient) DB() *gorm.DB {
 	return client.db
@@ -236,7 +240,8 @@ func (client *DBClient) SyncTables(tables []any) error {
 		var opt TableOption
 
 		// 如果DB是clickhouse ， 则尝试解析clickhouse tableoption
-		if client.schema == schemas.Clickhouse {
+		switch client.schema {
+		case schemas.Clickhouse:
 			// 发现确实有clickhouse的tableoption，则解析tableoption
 			if cktable, ok := table.(ClickhouseTable); ok {
 				opt = cktable.ClickhouseTableOption(dbop)
@@ -248,7 +253,7 @@ func (client *DBClient) SyncTables(tables []any) error {
 				}
 			}
 			// 如果DB是mysql ，则尝试解析mysql tableoption
-		} else if client.schema == schemas.MySQL {
+		case schemas.MySQL:
 			// 发现确实db是mysql，则解析tableoption
 			if mytable, ok := table.(MySQLTable); ok {
 				opt = mytable.MySQLTableOption(dbop)
@@ -273,6 +278,9 @@ func (client *DBClient) DropTables(tables []any) error {
 // StartMonitor Monitor DBState.
 func (client *DBClient) Stats() (sql.DBStats, error) {
 
+	if client.db == nil {
+		return sql.DBStats{}, fmt.Errorf("db is nil")
+	}
 	db, err := client.db.DB()
 	if err != nil {
 		return sql.DBStats{}, err
