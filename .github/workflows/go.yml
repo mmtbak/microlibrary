@@ -15,21 +15,47 @@ jobs:
     runs-on: ubuntu-latest
     services:
       kafka:
-        image: bitnami/kafka:latest
+        image: apache/kafka:latest
         ports:
-          - 9092:9092
+          - "9092:9092"
+          - "9093:9093"  # 控制器端口
         env:
-          KAFKA_CFG_NODE_ID: 1
-          KAFKA_CFG_PROCESS_ROLES: controller,broker
-          KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-          KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-          KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-          KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-          KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-        volumes:
-          - "kafka_data:/bitnami/kafka"
+          # KRaft 必需配置
+          KAFKA_NODE_ID: 1
+          KAFKA_PROCESS_ROLES: "broker,controller"
+          KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+          KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+          KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+          KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+          KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+          
+          # 集群ID（必需）
+          CLUSTER_ID: "test-cluster-$(date +%s)"
+          
+          # 性能优化配置
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+          KAFKA_NUM_PARTITIONS: 3
+          KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+          
+          # 启动优化
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+          KAFKA_LOG_RETENTION_HOURS: 1
+          KAFKA_LOG_SEGMENT_BYTES: 1048576
+          KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+          
+        options: >-
+          --health-cmd="timeout 10 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/9092'"
+          --health-interval=15s
+          --health-timeout=10s
+          --health-retries=8
+          --health-start-period=60s
+
       mysql:
-        image: bitnami/mysql:8.0
+        image: mysql:8.0
         ports:
           - 3306:3306
         env:
@@ -44,7 +70,8 @@ jobs:
           --health-timeout 5s
           --health-retries 3
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code 
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v4

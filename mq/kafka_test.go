@@ -14,7 +14,7 @@ import (
 
 func TestKafkaSyncSchema(t *testing.T) {
 	sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
-	kafkaSource := "kafka://127.0.0.1:9092/?" +
+	kafkaSource := "kafka://localhost:9092/?" +
 		"topics=my-event-test-topic" +
 		"&numpartition=2&numreplica=1&autocommitsecond=1" +
 		"initial=oldest&clientid=microlibrary-kafka-client"

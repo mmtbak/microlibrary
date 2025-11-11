@@ -284,10 +284,13 @@ func TestDBClient_WithDB(t *testing.T) {
 				MaxIdleConns: 50,
 			},
 			newDB: func() *gorm.DB {
-				db, _, _ := sqlmock.New()
-				gormDB, _ := gorm.Open(mysql.New(mysql.Config{
+				db, mock, err := sqlmock.New()
+				assert.Equal(t, err, nil)
+				mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+				gormDB, err := gorm.Open(mysql.New(mysql.Config{
 					Conn: db,
 				}), &gorm.Config{})
+				assert.Equal(t, err, nil)
 				return gormDB
 			}(),
 			expectConfig: &Config{
@@ -301,10 +304,13 @@ func TestDBClient_WithDB(t *testing.T) {
 			initialDB: nil,
 			config:    nil,
 			newDB: func() *gorm.DB {
-				db, _, _ := sqlmock.New()
-				gormDB, _ := gorm.Open(mysql.New(mysql.Config{
+				db, mock, err := sqlmock.New()
+				assert.Equal(t, err, nil)
+				mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+				gormDB, err := gorm.Open(mysql.New(mysql.Config{
 					Conn: db,
 				}), &gorm.Config{})
+				assert.Equal(t, err, nil)
 				return gormDB
 			}(),
 			expectConfig: &Config{},
@@ -339,10 +345,13 @@ func TestDBClient_DB(t *testing.T) {
 		{
 			name: "有DB连接",
 			db: func() *gorm.DB {
-				db, _, _ := sqlmock.New()
-				gormDB, _ := gorm.Open(mysql.New(mysql.Config{
+				db, mock, err := sqlmock.New()
+				assert.Equal(t, err, nil)
+				mock.ExpectQuery("SELECT VERSION()").WillReturnRows(sqlmock.NewRows([]string{"VERSION()"}).AddRow("5.7.30"))
+				gormDB, err := gorm.Open(mysql.New(mysql.Config{
 					Conn: db,
 				}), &gorm.Config{})
+				assert.Equal(t, err, nil)
 				return gormDB
 			}(),
 		},
